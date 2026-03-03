@@ -10,25 +10,43 @@ function getSupabase() {
   )
 }
 
-export async function POST(req: Request) {
-  const body = await req.json()
-  const event = body.event
-  const instanceName = body.instance
+// Event name mapping: Evolution sends UPPER_SNAKE via URL, dot.notation in body
+const EVENT_MAP: Record<string, string> = {
+  'MESSAGES_UPSERT': 'messages.upsert',
+  'MESSAGES_UPDATE': 'messages.update',
+  'CONNECTION_UPDATE': 'connection.update',
+  'QRCODE_UPDATED': 'qrcode.updated',
+  'SEND_MESSAGE': 'send.message',
+}
+
+export function normalizeEvent(event: string | undefined, urlSegment?: string): string | undefined {
+  if (event) return event
+  if (urlSegment) return EVENT_MAP[urlSegment.toUpperCase()] || urlSegment.toLowerCase().replace(/_/g, '.')
+  return undefined
+}
+
+export async function handleWebhook(body: Record<string, unknown>, eventOverride?: string) {
+  const event = normalizeEvent(body.event as string | undefined, eventOverride)
+  const instanceName = (body.instance as string) || ''
 
   const supabase = getSupabase()
 
   try {
     if (event === 'messages.upsert') {
-      await handleMessagesUpsert(supabase, instanceName, body.data)
+      await handleMessagesUpsert(supabase, instanceName, body.data as Record<string, unknown>)
     } else if (event === 'messages.update') {
-      await handleMessagesUpdate(supabase, body.data)
+      await handleMessagesUpdate(supabase, body.data as Record<string, unknown>)
     } else if (event === 'connection.update') {
-      await handleConnectionUpdate(supabase, instanceName, body.data)
+      await handleConnectionUpdate(supabase, instanceName, body.data as Record<string, unknown>)
     }
   } catch (err) {
     console.error(`Webhook error (${event}):`, err)
   }
+}
 
+export async function POST(req: Request) {
+  const body = await req.json()
+  await handleWebhook(body)
   return NextResponse.json({ ok: true })
 }
 

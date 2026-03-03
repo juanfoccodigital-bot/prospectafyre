@@ -39,7 +39,12 @@ export async function POST(req: Request) {
     let result: unknown
     const remoteJid = `${number.replace(/\D/g, '')}@s.whatsapp.net`
 
-    // Strip data: URI prefix for Evolution API (it expects raw base64)
+    // Extract mime type and strip data: URI prefix for Evolution API
+    let mediaMimeType: string | null = null
+    if (media) {
+      const mimeMatch = media.match(/^data:([^;]+);base64,/)
+      if (mimeMatch) mediaMimeType = mimeMatch[1]
+    }
     const rawMedia = media ? media.replace(/^data:[^;]+;base64,/, '') : media
 
     if (mediatype === 'audio') {
@@ -92,6 +97,7 @@ export async function POST(req: Request) {
       content: text || caption || null,
       media_type: mediatype || null,
       media_url: media || null,
+      media_mime_type: mediaMimeType,
       file_name: fileName || null,
       status: 'sent',
       lead_id: leadId,
