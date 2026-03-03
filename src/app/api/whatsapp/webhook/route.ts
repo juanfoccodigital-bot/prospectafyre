@@ -26,9 +26,23 @@ export function normalizeEvent(event: string | undefined, urlSegment?: string): 
   return undefined
 }
 
+function extractInstanceName(body: Record<string, unknown>): string {
+  const inst = body.instance
+  if (typeof inst === 'string' && inst) return inst
+  if (inst && typeof inst === 'object') {
+    const obj = inst as Record<string, unknown>
+    return (obj.instanceName as string) || (obj.instance_name as string) || (obj.name as string) || ''
+  }
+  // Fallback: sender field sometimes contains instance name
+  if (typeof body.sender === 'string' && body.sender) return body.sender
+  return ''
+}
+
 export async function handleWebhook(body: Record<string, unknown>, eventOverride?: string) {
   const event = normalizeEvent(body.event as string | undefined, eventOverride)
-  const instanceName = (body.instance as string) || ''
+  const instanceName = extractInstanceName(body)
+
+  console.log(`[webhook] event=${event} instance=${instanceName}`)
 
   const supabase = getSupabase()
 

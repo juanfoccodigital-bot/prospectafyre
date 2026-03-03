@@ -27,14 +27,30 @@ export function useWhatsAppMessages(remoteJid: string | null) {
   }, [remoteJid])
 
   const sendText = useCallback(async (instanceName: string, number: string, text: string) => {
+    // Optimistic: show message immediately
+    const tempId = `temp-${Date.now()}`
+    setMessages((prev) => [...prev, {
+      id: tempId,
+      instance_name: instanceName,
+      remote_jid: `${number.replace(/\D/g, '')}@s.whatsapp.net`,
+      message_id: tempId,
+      direction: 'outbound' as const,
+      content: text,
+      media_type: null,
+      media_url: null,
+      media_mime_type: null,
+      file_name: null,
+      status: 'sent' as const,
+      lead_id: null,
+      created_at: new Date().toISOString(),
+    }])
+
     const res = await fetch('/api/whatsapp/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ instanceName, number, text }),
     })
-    if (res.ok) {
-      await fetchMessages()
-    }
+    await fetchMessages()
     return res.ok
   }, [fetchMessages])
 
