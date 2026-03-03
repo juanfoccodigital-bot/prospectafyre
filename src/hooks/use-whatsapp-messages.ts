@@ -7,8 +7,11 @@ export function useWhatsAppMessages(remoteJid: string | null) {
   const [messages, setMessages] = useState<WhatsAppMessage[]>([])
   const [loading, setLoading] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const sendingRef = useRef(false)
 
   const fetchMessages = useCallback(async () => {
+    // Skip polling while a send is in-flight to preserve optimistic messages
+    if (sendingRef.current) return
     if (!remoteJid) {
       setMessages([])
       return
@@ -27,6 +30,8 @@ export function useWhatsAppMessages(remoteJid: string | null) {
   }, [remoteJid])
 
   const sendText = useCallback(async (instanceName: string, number: string, text: string) => {
+    sendingRef.current = true
+
     // Optimistic: show message immediately
     const tempId = `temp-${Date.now()}`
     setMessages((prev) => [...prev, {
@@ -45,13 +50,20 @@ export function useWhatsAppMessages(remoteJid: string | null) {
       created_at: new Date().toISOString(),
     }])
 
-    const res = await fetch('/api/whatsapp/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ instanceName, number, text }),
-    })
-    await fetchMessages()
-    return res.ok
+    try {
+      const res = await fetch('/api/whatsapp/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instanceName, number, text }),
+      })
+      sendingRef.current = false
+      await fetchMessages()
+      return res.ok
+    } catch {
+      sendingRef.current = false
+      await fetchMessages()
+      return false
+    }
   }, [fetchMessages])
 
   const sendMedia = useCallback(async (
@@ -62,15 +74,21 @@ export function useWhatsAppMessages(remoteJid: string | null) {
     caption?: string,
     fileName?: string
   ) => {
-    const res = await fetch('/api/whatsapp/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ instanceName, number, mediatype, media, caption, fileName }),
-    })
-    if (res.ok) {
+    sendingRef.current = true
+    try {
+      const res = await fetch('/api/whatsapp/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instanceName, number, mediatype, media, caption, fileName }),
+      })
+      sendingRef.current = false
       await fetchMessages()
+      return res.ok
+    } catch {
+      sendingRef.current = false
+      await fetchMessages()
+      return false
     }
-    return res.ok
   }, [fetchMessages])
 
   // Poll for new messages
