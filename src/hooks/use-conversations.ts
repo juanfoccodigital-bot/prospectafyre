@@ -30,5 +30,23 @@ export function useConversations() {
     }
   }, [fetchConversations])
 
-  return { conversations, loading, refetch: fetchConversations }
+  const markAsRead = useCallback(async (remoteJid: string, userId: string) => {
+    try {
+      await fetch('/api/whatsapp/messages/read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ remoteJid, userId }),
+      })
+      // Optimistically update local state
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.remote_jid === remoteJid ? { ...c, unread_count: 0 } : c
+        )
+      )
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  return { conversations, loading, refetch: fetchConversations, markAsRead }
 }

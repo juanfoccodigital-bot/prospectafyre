@@ -162,13 +162,12 @@ export function ChatPanel({ remoteJid, instanceName, conversation, onBack }: Cha
 
       {/* Input */}
       <ChatInput
-        onSendText={(text) => {
-          handleSendText(inputText || text)
-          setInputText('')
-        }}
+        onSendText={handleSendText}
         onSendMedia={handleSendMedia}
         onOpenTemplates={() => setShowTemplates(true)}
         disabled={!instanceName}
+        value={inputText}
+        onValueChange={setInputText}
       />
 
       {/* Template picker & manager */}

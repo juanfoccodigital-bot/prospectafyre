@@ -33,7 +33,7 @@ function AtendimentoContent() {
     deleteInstance,
   } = useWhatsAppInstance()
 
-  const { conversations, loading: convsLoading } = useConversations()
+  const { conversations, loading: convsLoading, markAsRead } = useConversations()
 
   const [activeJid, setActiveJid] = useState<string | null>(null)
   const [showQR, setShowQR] = useState(false)
@@ -45,8 +45,11 @@ function AtendimentoContent() {
       const jid = phoneToJid(phoneParam)
       setActiveJid(jid)
       setShowMobileChat(true)
+      if (user) {
+        markAsRead(jid, user.id)
+      }
     }
-  }, [phoneParam])
+  }, [phoneParam, user, markAsRead])
 
   // Auto-show QR dialog when QR code becomes available during creation
   useEffect(() => {
@@ -72,6 +75,10 @@ function AtendimentoContent() {
   const handleSelectConversation = (jid: string) => {
     setActiveJid(jid)
     setShowMobileChat(true)
+    // Mark conversation as read
+    if (user) {
+      markAsRead(jid, user.id)
+    }
   }
 
   const handleNewChat = () => {

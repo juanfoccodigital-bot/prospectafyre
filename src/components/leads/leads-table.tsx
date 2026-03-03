@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Edit, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Edit, ChevronLeft, ChevronRight, Trash2, Archive, ArchiveRestore } from 'lucide-react'
 import type { Lead } from '@/types'
 import { LEAD_STATUS_CONFIG } from '@/types'
 import { LEADS_PER_PAGE } from '@/lib/constants'
@@ -22,11 +22,14 @@ interface LeadsTableProps {
   total: number
   page: number
   loading: boolean
+  showArchived?: boolean
   onPageChange: (page: number) => void
   onEdit: (lead: Lead) => void
+  onDelete: (lead: Lead) => void
+  onArchive: (lead: Lead) => void
 }
 
-export function LeadsTable({ leads, total, page, loading, onPageChange, onEdit }: LeadsTableProps) {
+export function LeadsTable({ leads, total, page, loading, showArchived, onPageChange, onEdit, onDelete, onArchive }: LeadsTableProps) {
   const totalPages = Math.ceil(total / LEADS_PER_PAGE)
 
   if (loading) {
@@ -116,17 +119,48 @@ export function LeadsTable({ leads, total, page, loading, onPageChange, onEdit }
                       )}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onEdit(lead)
-                        }}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          title="Editar"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onEdit(lead)
+                          }}
+                        >
+                          <Edit className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          title={showArchived ? 'Desarquivar' : 'Arquivar'}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onArchive(lead)
+                          }}
+                        >
+                          {showArchived ? (
+                            <ArchiveRestore className="h-3.5 w-3.5" />
+                          ) : (
+                            <Archive className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          title="Deletar"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onDelete(lead)
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </motion.tr>
                 )

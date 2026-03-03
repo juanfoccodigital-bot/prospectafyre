@@ -33,6 +33,7 @@ export interface Lead {
   observacoes: string | null
   ultimo_contato: string | null
   resposta: boolean
+  archived: boolean
   created_at: string
   updated_at: string
   // joined
@@ -62,6 +63,7 @@ export interface LeadFilters {
   faturamento_max?: number
   status?: LeadStatus
   assigned_to?: string
+  archived?: boolean
 }
 
 export interface DashboardStats {
@@ -180,6 +182,7 @@ export interface WhatsAppContact {
   nome: string | null
   profile_pic_url: string | null
   observacoes: string | null
+  archived: boolean
   created_manually: boolean
   updated_at: string
   tags?: string[]

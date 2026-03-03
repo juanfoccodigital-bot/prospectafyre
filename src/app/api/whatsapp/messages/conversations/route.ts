@@ -6,6 +6,9 @@ import type { Conversation } from '@/types'
 export async function GET() {
   const supabase = await createClient()
 
+  // Get current user for read tracking
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+
   const { data: messages, error } = await supabase
     .from('whatsapp_messages')
     .select('remote_jid, content, direction, created_at, lead_id, media_type')
@@ -17,6 +20,19 @@ export async function GET() {
 
   if (!messages?.length) {
     return NextResponse.json([])
+  }
+
+  // Get conversation read timestamps
+  const readsMap: Record<string, string> = {}
+  if (authUser) {
+    const { data: reads } = await supabase
+      .from('conversation_reads')
+      .select('remote_jid, last_read_at')
+      .eq('user_id', authUser.id)
+
+    reads?.forEach((r) => {
+      readsMap[r.remote_jid] = r.last_read_at
+    })
   }
 
   // Group by remote_jid
@@ -46,9 +62,13 @@ export async function GET() {
         lead_id: msg.lead_id,
       })
     }
+    // Only count inbound messages that arrived after last_read_at
     if (msg.direction === 'inbound') {
-      const conv = convMap.get(msg.remote_jid)!
-      conv.unread_count++
+      const lastRead = readsMap[msg.remote_jid]
+      if (!lastRead || new Date(msg.created_at) > new Date(lastRead)) {
+        const conv = convMap.get(msg.remote_jid)!
+        conv.unread_count++
+      }
     }
   }
 

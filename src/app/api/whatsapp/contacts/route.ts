@@ -57,6 +57,7 @@ export async function GET() {
       nome: c.nome,
       profile_pic_url: c.profile_pic_url,
       observacoes: c.observacoes,
+      archived: c.archived ?? false,
       created_manually: c.created_manually ?? false,
       updated_at: c.updated_at,
       tags: tagsMap[c.remote_jid] || [],
@@ -102,7 +103,8 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  const { remoteJid, nome, observacoes } = await req.json()
+  const body = await req.json()
+  const { remoteJid, nome, observacoes } = body
 
   if (!remoteJid) {
     return NextResponse.json({ error: 'remoteJid is required' }, { status: 400 })
@@ -113,6 +115,7 @@ export async function PATCH(req: Request) {
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (nome !== undefined) updates.nome = nome
   if (observacoes !== undefined) updates.observacoes = observacoes
+  if (body.archived !== undefined) updates.archived = body.archived
 
   const { data, error } = await supabase
     .from('whatsapp_contacts')

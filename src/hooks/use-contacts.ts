@@ -61,5 +61,17 @@ export function useContacts() {
     return res.ok
   }, [fetchContacts])
 
-  return { contacts, loading, refetch: fetchContacts, createContact, updateContact, deleteContact }
+  const archiveContact = useCallback(async (remoteJid: string, archived: boolean) => {
+    const res = await fetch('/api/whatsapp/contacts', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ remoteJid, archived }),
+    })
+    if (res.ok) {
+      await fetchContacts()
+    }
+    return res.ok
+  }, [fetchContacts])
+
+  return { contacts, loading, refetch: fetchContacts, createContact, updateContact, deleteContact, archiveContact }
 }

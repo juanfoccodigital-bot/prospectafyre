@@ -31,6 +31,11 @@ export function useLeads(filters: LeadFilters = {}, page = 1) {
     if (filters.assigned_to) query = query.eq('assigned_to', filters.assigned_to)
     if (filters.faturamento_min != null) query = query.gte('faturamento', filters.faturamento_min)
     if (filters.faturamento_max != null) query = query.lte('faturamento', filters.faturamento_max)
+    if (filters.archived) {
+      query = query.eq('archived', true)
+    } else {
+      query = query.or('archived.is.null,archived.eq.false')
+    }
 
     const from = (page - 1) * LEADS_PER_PAGE
     const to = from + LEADS_PER_PAGE - 1
@@ -50,7 +55,24 @@ export function useLeads(filters: LeadFilters = {}, page = 1) {
     fetchLeads()
   }, [fetchLeads])
 
-  return { leads, total, loading, refetch: fetchLeads }
+  const deleteLead = useCallback(async (leadId: string) => {
+    // Delete interactions first
+    await supabase.from('interactions').delete().eq('lead_id', leadId)
+    const { error } = await supabase.from('leads').delete().eq('id', leadId)
+    if (!error) await fetchLeads()
+    return !error
+  }, [fetchLeads]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const archiveLead = useCallback(async (leadId: string, archived: boolean) => {
+    const { error } = await supabase
+      .from('leads')
+      .update({ archived })
+      .eq('id', leadId)
+    if (!error) await fetchLeads()
+    return !error
+  }, [fetchLeads]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return { leads, total, loading, refetch: fetchLeads, deleteLead, archiveLead }
 }
 
 export function useLeadsByStatus(userId?: string, dateRange?: DateRange) {

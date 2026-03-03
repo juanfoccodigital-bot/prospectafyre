@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Paperclip, Send, FileText, Mic, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -10,10 +10,19 @@ interface ChatInputProps {
   onSendMedia: (mediatype: string, media: string, caption?: string, fileName?: string) => void
   onOpenTemplates: () => void
   disabled?: boolean
+  value?: string
+  onValueChange?: (value: string) => void
 }
 
-export function ChatInput({ onSendText, onSendMedia, onOpenTemplates, disabled }: ChatInputProps) {
+export function ChatInput({ onSendText, onSendMedia, onOpenTemplates, disabled, value, onValueChange }: ChatInputProps) {
   const [text, setText] = useState('')
+
+  // Sync external value into internal state
+  useEffect(() => {
+    if (value !== undefined && value !== text) {
+      setText(value)
+    }
+  }, [value]) // eslint-disable-line react-hooks/exhaustive-deps
   const [sending, setSending] = useState(false)
   const [recording, setRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
@@ -23,12 +32,17 @@ export function ChatInput({ onSendText, onSendMedia, onOpenTemplates, disabled }
   const audioChunksRef = useRef<Blob[]>([])
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  const updateText = (val: string) => {
+    setText(val)
+    onValueChange?.(val)
+  }
+
   const handleSend = async () => {
     const trimmed = text.trim()
     if (!trimmed || sending) return
     setSending(true)
     onSendText(trimmed)
-    setText('')
+    updateText('')
     setSending(false)
     textareaRef.current?.focus()
   }
@@ -209,7 +223,7 @@ export function ChatInput({ onSendText, onSendMedia, onOpenTemplates, disabled }
           <Textarea
             ref={textareaRef}
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => updateText(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Digite uma mensagem..."
             className="min-h-9 max-h-32 resize-none text-sm"

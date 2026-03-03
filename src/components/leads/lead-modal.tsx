@@ -24,7 +24,7 @@ import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Phone, Mail, MessageSquare, Clock, Save, Plus, Loader2 } from 'lucide-react'
+import { Phone, Mail, MessageSquare, Clock, Save, Plus, Loader2, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useUser, useUsers } from '@/hooks/use-user'
 import { useInteractions } from '@/hooks/use-leads'
@@ -37,9 +37,10 @@ interface LeadModalProps {
   open: boolean
   onClose: () => void
   onSave: () => void
+  onDelete?: (lead: Lead) => void
 }
 
-export function LeadModal({ lead, open, onClose, onSave }: LeadModalProps) {
+export function LeadModal({ lead, open, onClose, onSave, onDelete }: LeadModalProps) {
   const supabase = createClient()
   const { user } = useUser()
   const { users } = useUsers()
@@ -412,14 +413,32 @@ export function LeadModal({ lead, open, onClose, onSave }: LeadModalProps) {
         </Tabs>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 border-t border-border/50 px-6 py-4">
-          <Button variant="outline" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSave} disabled={saving} className="gap-2">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Salvar
-          </Button>
+        <div className="flex justify-between border-t border-border/50 px-6 py-4">
+          {onDelete && lead ? (
+            <Button
+              variant="ghost"
+              className="gap-2 text-destructive hover:text-destructive"
+              onClick={() => {
+                if (confirm(`Deletar o lead "${lead.nome}"? Esta ação não pode ser desfeita.`)) {
+                  onDelete(lead)
+                }
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+              Deletar
+            </Button>
+          ) : (
+            <div />
+          )}
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSave} disabled={saving} className="gap-2">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Salvar
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
