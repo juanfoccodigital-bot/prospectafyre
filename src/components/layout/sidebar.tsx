@@ -10,6 +10,7 @@ import {
   Kanban,
   User,
   MessageSquare,
+  Contact,
   ChevronLeft,
   ChevronRight,
   MessageSquareMore,
@@ -25,6 +26,7 @@ import {
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/leads', label: 'Leads', icon: Users },
+  { href: '/contatos', label: 'Contatos', icon: Contact },
   { href: '/kanban', label: 'Kanban', icon: Kanban },
   { href: '/upload', label: 'Upload', icon: Upload },
   { href: '/profile', label: 'Perfil', icon: User },

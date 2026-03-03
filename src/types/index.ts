@@ -170,3 +170,15 @@ export interface ContactTag {
   tag: string
   created_at: string
 }
+
+export interface WhatsAppContact {
+  remote_jid: string
+  push_name: string | null
+  nome: string | null
+  profile_pic_url: string | null
+  observacoes: string | null
+  created_manually: boolean
+  updated_at: string
+  tags?: string[]
+  lead?: Lead | null
+}
