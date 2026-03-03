@@ -28,7 +28,11 @@ export function useWhatsAppMessages(remoteJid: string | null) {
             !data.some((d: WhatsAppMessage) => d.direction === 'outbound' && d.content === temp.content) &&
             Date.now() - new Date(temp.created_at).getTime() < 30000
           )
-          return keptTemps.length ? [...data, ...keptTemps] : data
+          if (!keptTemps.length) return data
+          // Merge and sort chronologically so temps sit in the right position
+          return [...data, ...keptTemps].sort((a, b) =>
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          )
         })
       }
     } catch {
