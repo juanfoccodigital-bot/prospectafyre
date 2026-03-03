@@ -12,6 +12,7 @@ export async function getUserInstance(supabase: SupabaseClient): Promise<string 
     .from('whatsapp_instances')
     .select('instance_name')
     .eq('created_by', user.id)
+    .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
 

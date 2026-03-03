@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     .limit(limit)
 
   if (instanceName) {
-    query = query.or(`instance_name.eq.${instanceName},instance_name.is.null,instance_name.eq.`)
+    query = query.or(`instance_name.eq.${instanceName},instance_name.is.null`)
   }
 
   const { data, error } = await query
