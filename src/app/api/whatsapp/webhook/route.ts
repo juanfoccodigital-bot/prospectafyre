@@ -47,7 +47,7 @@ export async function handleWebhook(body: Record<string, unknown>, eventOverride
   const supabase = getSupabase()
 
   try {
-    if (event === 'messages.upsert') {
+    if (event === 'messages.upsert' || event === 'send.message') {
       await handleMessagesUpsert(supabase, instanceName, body.data as Record<string, unknown>)
     } else if (event === 'messages.update') {
       await handleMessagesUpdate(supabase, body.data as Record<string, unknown>)
@@ -80,10 +80,28 @@ async function handleMessagesUpsert(
   const messageId = key.id as string
   const pushName = data.pushName as string | undefined
 
-  // Skip outbound messages — our POST route already saves them
-  // The SEND_MESSAGE webhook echo would overwrite media_url with null
+  // For outbound messages: save with ignoreDuplicates so we don't overwrite
+  // data from the POST route (which may have already saved it with media_url).
+  // This ensures messages sent from the phone are also captured.
   if (fromMe) {
-    // Still cache contact push_name updates for outbound if needed
+    const message = data.message as Record<string, unknown> | undefined
+    let outContent: string | null = null
+    if (message) {
+      outContent = (message.conversation as string) ||
+        (message.extendedTextMessage as Record<string, unknown>)?.text as string ||
+        null
+    }
+    await supabase.from('whatsapp_messages').upsert(
+      {
+        instance_name: instanceName,
+        remote_jid: remoteJid,
+        message_id: messageId,
+        direction: 'outbound',
+        content: outContent,
+        status: 'sent',
+      },
+      { onConflict: 'message_id', ignoreDuplicates: true }
+    )
     return
   }
 
