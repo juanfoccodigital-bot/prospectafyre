@@ -18,7 +18,7 @@ export async function GET() {
     .order('created_at', { ascending: false })
 
   if (instanceName) {
-    messagesQuery = messagesQuery.eq('instance_name', instanceName)
+    messagesQuery = messagesQuery.or(`instance_name.eq.${instanceName},instance_name.is.null,instance_name.eq.`)
   }
 
   const { data: messages, error } = await messagesQuery

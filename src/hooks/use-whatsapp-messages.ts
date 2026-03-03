@@ -61,14 +61,15 @@ export function useWhatsAppMessages(remoteJid: string | null) {
       created_at: new Date().toISOString(),
     }])
 
-    // Fire and forget — polling handles the rest
     const res = await fetch('/api/whatsapp/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ instanceName, number, text }),
     })
+    // Sync with server — functional update in fetchMessages preserves temps safely
+    await fetchMessages()
     return res.ok
-  }, [])
+  }, [fetchMessages])
 
   const sendMedia = useCallback(async (
     instanceName: string,
