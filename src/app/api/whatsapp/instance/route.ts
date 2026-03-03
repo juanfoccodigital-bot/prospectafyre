@@ -7,18 +7,23 @@ export async function GET() {
   const { data: { user: authUser } } = await supabase.auth.getUser()
   const userId = authUser?.id
 
+  if (!userId) {
+    return NextResponse.json([])
+  }
+
   const { data: instances } = await supabase
     .from('whatsapp_instances')
     .select('*')
-    .eq('created_by', userId || '')
+    .eq('created_by', userId)
     .order('created_at', { ascending: false })
 
   if (!instances?.length) {
-    // Check if any pf-* instance exists on Evolution API but not in Supabase
+    // Check if any unclaimed pf-* instance exists on Evolution API
     try {
       const evoInstances = await evolutionApi.fetchInstances() as { name: string; connectionStatus: string }[]
-      const pfInstance = evoInstances.find((i) => i.name.startsWith('pf-'))
-      if (pfInstance) {
+      const pfInstances = evoInstances.filter((i) => i.name.startsWith('pf-'))
+
+      for (const pfInstance of pfInstances) {
         // Check if this instance is already claimed by another user
         const { data: existing } = await supabase
           .from('whatsapp_instances')
@@ -27,15 +32,16 @@ export async function GET() {
           .maybeSingle()
 
         if (existing && existing.created_by && existing.created_by !== userId) {
-          // Instance belongs to another user — don't claim it
-          return NextResponse.json([])
+          // Instance belongs to another user — skip
+          continue
         }
 
+        // Found unclaimed instance or one belonging to this user
         const status = pfInstance.connectionStatus === 'open' ? 'connected' : pfInstance.connectionStatus === 'connecting' ? 'connecting' : 'disconnected'
         await supabase.from('whatsapp_instances').upsert({
           instance_name: pfInstance.name,
           status,
-          created_by: userId || null,
+          created_by: userId,
         }, { onConflict: 'instance_name' })
         const { data: saved } = await supabase.from('whatsapp_instances').select('*').eq('instance_name', pfInstance.name).maybeSingle()
         if (saved) return NextResponse.json([{ ...saved, status }])
