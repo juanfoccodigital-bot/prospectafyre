@@ -1,15 +1,23 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { phoneToJid, jidToPhone } from '@/lib/evolution/utils'
+import { getUserInstance } from '@/lib/supabase/get-user-instance'
 import type { WhatsAppContact, Lead } from '@/types'
 
 export async function GET() {
   const supabase = await createClient()
+  const instanceName = await getUserInstance(supabase)
 
-  const { data: contacts, error } = await supabase
+  let contactsQuery = supabase
     .from('whatsapp_contacts')
     .select('*')
     .order('updated_at', { ascending: false })
+
+  if (instanceName) {
+    contactsQuery = contactsQuery.eq('instance_name', instanceName)
+  }
+
+  const { data: contacts, error } = await contactsQuery
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
@@ -80,6 +88,7 @@ export async function POST(req: Request) {
   const remoteJid = phoneToJid(fullPhone)
 
   const supabase = await createClient()
+  const instanceName = await getUserInstance(supabase)
 
   const { data, error } = await supabase
     .from('whatsapp_contacts')
@@ -87,6 +96,7 @@ export async function POST(req: Request) {
       {
         remote_jid: remoteJid,
         nome: nome || null,
+        instance_name: instanceName,
         created_manually: true,
         updated_at: new Date().toISOString(),
       },

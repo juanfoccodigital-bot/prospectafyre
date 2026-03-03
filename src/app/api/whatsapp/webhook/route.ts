@@ -187,6 +187,7 @@ async function handleMessagesUpsert(
     const contactData: Record<string, unknown> = {
       remote_jid: remoteJid,
       push_name: pushName,
+      instance_name: instanceName,
       updated_at: new Date().toISOString(),
     }
 

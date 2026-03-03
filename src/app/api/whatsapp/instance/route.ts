@@ -4,9 +4,13 @@ import { evolutionApi } from '@/lib/evolution/client'
 
 export async function GET() {
   const supabase = await createClient()
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+  const userId = authUser?.id
+
   const { data: instances } = await supabase
     .from('whatsapp_instances')
     .select('*')
+    .eq('created_by', userId || '')
     .order('created_at', { ascending: false })
 
   if (!instances?.length) {
@@ -15,12 +19,23 @@ export async function GET() {
       const evoInstances = await evolutionApi.fetchInstances() as { name: string; connectionStatus: string }[]
       const pfInstance = evoInstances.find((i) => i.name.startsWith('pf-'))
       if (pfInstance) {
+        // Check if this instance is already claimed by another user
+        const { data: existing } = await supabase
+          .from('whatsapp_instances')
+          .select('created_by')
+          .eq('instance_name', pfInstance.name)
+          .maybeSingle()
+
+        if (existing && existing.created_by && existing.created_by !== userId) {
+          // Instance belongs to another user — don't claim it
+          return NextResponse.json([])
+        }
+
         const status = pfInstance.connectionStatus === 'open' ? 'connected' : pfInstance.connectionStatus === 'connecting' ? 'connecting' : 'disconnected'
-        const { data: user } = await supabase.auth.getUser()
         await supabase.from('whatsapp_instances').upsert({
           instance_name: pfInstance.name,
           status,
-          created_by: user?.user?.id || null,
+          created_by: userId || null,
         }, { onConflict: 'instance_name' })
         const { data: saved } = await supabase.from('whatsapp_instances').select('*').eq('instance_name', pfInstance.name).maybeSingle()
         if (saved) return NextResponse.json([{ ...saved, status }])

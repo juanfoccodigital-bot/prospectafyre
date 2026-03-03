@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { jidToPhone, phoneToDisplay } from '@/lib/evolution/utils'
+import { getUserInstance } from '@/lib/supabase/get-user-instance'
 import type { Conversation } from '@/types'
 
 export async function GET() {
@@ -9,10 +10,18 @@ export async function GET() {
   // Get current user for read tracking
   const { data: { user: authUser } } = await supabase.auth.getUser()
 
-  const { data: messages, error } = await supabase
+  const instanceName = await getUserInstance(supabase)
+
+  let messagesQuery = supabase
     .from('whatsapp_messages')
     .select('remote_jid, content, direction, created_at, lead_id, media_type')
     .order('created_at', { ascending: false })
+
+  if (instanceName) {
+    messagesQuery = messagesQuery.eq('instance_name', instanceName)
+  }
+
+  const { data: messages, error } = await messagesQuery
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { evolutionApi } from '@/lib/evolution/client'
 import { jidToPhone } from '@/lib/evolution/utils'
+import { getUserInstance } from '@/lib/supabase/get-user-instance'
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
@@ -13,12 +14,20 @@ export async function GET(req: Request) {
   }
 
   const supabase = await createClient()
-  const { data, error } = await supabase
+  const instanceName = await getUserInstance(supabase)
+
+  let query = supabase
     .from('whatsapp_messages')
     .select('*, lead:leads!lead_id(id, nome, especialidade, status, ddd, telefone)')
     .eq('remote_jid', remoteJid)
     .order('created_at', { ascending: true })
     .limit(limit)
+
+  if (instanceName) {
+    query = query.eq('instance_name', instanceName)
+  }
+
+  const { data, error } = await query
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
