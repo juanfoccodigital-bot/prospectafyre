@@ -47,8 +47,8 @@ export function useDashboardStats(dateRange?: DateRange) {
   const fetchStats = useCallback(async () => {
     setLoading(true)
 
-    const leads = await fetchAllRows<{ status: string; assigned_to: string; resposta: boolean }>(
-      supabase, 'leads', 'status, assigned_to, resposta', buildDateFilters(dateRange)
+    const leads = await fetchAllRows<{ status: string; assigned_to: string; resposta: boolean; valor_fechamento: number | null }>(
+      supabase, 'leads', 'status, assigned_to, resposta, valor_fechamento', buildDateFilters(dateRange)
     )
 
     const totalLeads = leads.length
@@ -57,15 +57,20 @@ export function useDashboardStats(dateRange?: DateRange) {
     let leadsFechados = 0
     let leadsPerdidos = 0
     let respostas = 0
+    let faturamentoFechado = 0
 
     leads.forEach((lead) => {
       leadsPorUsuario[lead.assigned_to] = (leadsPorUsuario[lead.assigned_to] || 0) + 1
       if (lead.status !== 'novo') leadsContatados++
-      if (lead.status === 'fechado') leadsFechados++
+      if (lead.status === 'fechado') {
+        leadsFechados++
+        if (lead.valor_fechamento) faturamentoFechado += lead.valor_fechamento
+      }
       if (lead.status === 'perdido') leadsPerdidos++
       if (lead.resposta) respostas++
     })
 
+    const churnBase = leadsFechados + leadsPerdidos
     setStats({
       totalLeads,
       leadsPorUsuario,
@@ -74,6 +79,8 @@ export function useDashboardStats(dateRange?: DateRange) {
       leadsPerdidos,
       taxaConversao: totalLeads > 0 ? (leadsFechados / totalLeads) * 100 : 0,
       taxaResposta: totalLeads > 0 ? (respostas / totalLeads) * 100 : 0,
+      faturamentoFechado,
+      taxaChurn: churnBase > 0 ? (leadsPerdidos / churnBase) * 100 : 0,
     })
     setLoading(false)
   }, [rangeKey]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -268,6 +275,44 @@ export function useLeadsByDDD(dateRange?: DateRange) {
       .map(([ddd, value]) => ({ name: getDddRegion(ddd), ddd, value }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 12)
+    setData(sorted)
+    setLoading(false)
+  }, [rangeKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  return { data, loading }
+}
+
+export function useRevenueChart(dateRange?: DateRange) {
+  const [data, setData] = useState<{ month: string; valor: number }[]>([])
+  const [loading, setLoading] = useState(true)
+  const supabase = createClient()
+  const rangeKey = JSON.stringify(dateRange)
+
+  const fetchData = useCallback(async () => {
+    setLoading(true)
+
+    const filters = buildDateFilters(dateRange)
+    const leads = await fetchAllRows<{ status: string; valor_fechamento: number | null; updated_at: string }>(
+      supabase, 'leads', 'status, valor_fechamento, updated_at',
+      { ...filters, eq: [['status', 'fechado']] }
+    )
+
+    const grouped: Record<string, number> = {}
+    leads.forEach((l) => {
+      if (!l.valor_fechamento) return
+      const d = new Date(l.updated_at)
+      const key = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
+      grouped[key] = (grouped[key] || 0) + l.valor_fechamento
+    })
+
+    const sorted = Object.entries(grouped)
+      .map(([month, valor]) => ({ month, valor }))
+      .slice(-6)
+
     setData(sorted)
     setLoading(false)
   }, [rangeKey]) // eslint-disable-line react-hooks/exhaustive-deps

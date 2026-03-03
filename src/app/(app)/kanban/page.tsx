@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { KanbanBoard } from '@/components/kanban/kanban-board'
 import { KanbanStats } from '@/components/kanban/kanban-stats'
+import { UpcomingMeetings } from '@/components/meetings/upcoming-meetings'
 import { DateFilter } from '@/components/shared/date-filter'
 import { useUser } from '@/hooks/use-user'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -46,6 +47,7 @@ export default function KanbanPage() {
       {user && (
         <>
           <KanbanBoard userId={user.id} dateRange={dateRange} />
+          <UpcomingMeetings />
           <KanbanStats userId={user.id} dateRange={dateRange} />
         </>
       )}

@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { StatsCards } from '@/components/dashboard/stats-cards'
 import { DashboardCharts } from '@/components/dashboard/charts'
 import { Ranking } from '@/components/dashboard/ranking'
+import { UpcomingMeetings } from '@/components/meetings/upcoming-meetings'
 import { DateFilter } from '@/components/shared/date-filter'
 import type { DateRange } from '@/types'
 
@@ -30,7 +31,10 @@ export default function DashboardPage() {
 
       <StatsCards dateRange={dateRange} />
       <DashboardCharts dateRange={dateRange} />
-      <Ranking dateRange={dateRange} />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <UpcomingMeetings />
+        <Ranking dateRange={dateRange} />
+      </div>
     </motion.div>
   )
 }

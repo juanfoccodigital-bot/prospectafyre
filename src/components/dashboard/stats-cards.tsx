@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useDashboardStats } from '@/hooks/use-stats'
-import { Users, Phone, Rocket, TrendingUp, Target, BarChart3 } from 'lucide-react'
+import { Users, Phone, Rocket, TrendingUp, TrendingDown, Target, BarChart3, DollarSign } from 'lucide-react'
 import type { DateRange } from '@/types'
 
 function AnimatedCounter({ value, duration = 1.5 }: { value: number; duration?: number }) {
@@ -47,8 +47,8 @@ export function StatsCards({ dateRange }: { dateRange?: DateRange }) {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        {Array.from({ length: 6 }).map((_, i) => (
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
+        {Array.from({ length: 8 }).map((_, i) => (
           <Skeleton key={i} className="h-28" />
         ))}
       </div>
@@ -57,7 +57,15 @@ export function StatsCards({ dateRange }: { dateRange?: DateRange }) {
 
   if (!stats) return null
 
-  const cards = [
+  const cards: {
+    title: string
+    value: number | string
+    icon: typeof Users
+    color: string
+    bg: string
+    suffix?: string
+    isCurrency?: boolean
+  }[] = [
     {
       title: 'Total de Leads',
       value: stats.totalLeads,
@@ -80,11 +88,12 @@ export function StatsCards({ dateRange }: { dateRange?: DateRange }) {
       bg: 'bg-fyre/10',
     },
     {
-      title: 'Perdidos',
-      value: stats.leadsPerdidos,
-      icon: Target,
-      color: 'text-red-400',
-      bg: 'bg-red-400/10',
+      title: 'Faturamento',
+      value: stats.faturamentoFechado,
+      icon: DollarSign,
+      color: 'text-fyre',
+      bg: 'bg-fyre/10',
+      isCurrency: true,
     },
     {
       title: 'Taxa Conversão',
@@ -102,6 +111,21 @@ export function StatsCards({ dateRange }: { dateRange?: DateRange }) {
       bg: 'bg-purple-400/10',
       suffix: '%',
     },
+    {
+      title: 'Perdidos',
+      value: stats.leadsPerdidos,
+      icon: Target,
+      color: 'text-red-400',
+      bg: 'bg-red-400/10',
+    },
+    {
+      title: 'Taxa Churn',
+      value: Math.round(stats.taxaChurn),
+      icon: TrendingDown,
+      color: 'text-red-400',
+      bg: 'bg-red-400/10',
+      suffix: '%',
+    },
   ]
 
   return (
@@ -109,7 +133,7 @@ export function StatsCards({ dateRange }: { dateRange?: DateRange }) {
       variants={container}
       initial="hidden"
       animate="show"
-      className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"
+      className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8"
     >
       {cards.map((card) => (
         <motion.div key={card.title} variants={item}>
@@ -123,10 +147,21 @@ export function StatsCards({ dateRange }: { dateRange?: DateRange }) {
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">
-                <AnimatedCounter value={card.value} />
-                {card.suffix}
-              </p>
+              {card.isCurrency ? (
+                <p className="text-base font-bold truncate">
+                  {new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                    notation: 'compact',
+                    maximumSignificantDigits: 3,
+                  }).format(card.value as number)}
+                </p>
+              ) : (
+                <p className="text-2xl font-bold">
+                  <AnimatedCounter value={card.value as number} />
+                  {card.suffix}
+                </p>
+              )}
             </CardContent>
           </Card>
         </motion.div>

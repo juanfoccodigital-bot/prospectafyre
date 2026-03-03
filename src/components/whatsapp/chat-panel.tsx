@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, ExternalLink, MapPin, Phone, Briefcase, User } from 'lucide-react'
+import { ArrowLeft, Calendar, ExternalLink, MapPin, Phone, Briefcase, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -16,7 +16,9 @@ import { ChatInput } from './chat-input'
 import { ContactTags } from './contact-tags'
 import { TemplatePicker } from './template-picker'
 import { TemplateManager } from './template-manager'
+import { MeetingModal } from '@/components/meetings/meeting-modal'
 import { useWhatsAppMessages } from '@/hooks/use-whatsapp-messages'
+import { useUser } from '@/hooks/use-user'
 import { useWhatsAppTemplates } from '@/hooks/use-whatsapp-templates'
 import { phoneToDisplay, jidToPhone } from '@/lib/evolution/utils'
 import type { Conversation, Lead } from '@/types'
@@ -35,8 +37,10 @@ export function ChatPanel({ remoteJid, instanceName, conversation, onBack }: Cha
   const [showTemplates, setShowTemplates] = useState(false)
   const [showTemplateManager, setShowTemplateManager] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
+  const [showMeetingModal, setShowMeetingModal] = useState(false)
   const [inputText, setInputText] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
+  const { user } = useUser()
 
   const phone = remoteJid ? jidToPhone(remoteJid) : ''
   const displayPhone = phone ? phoneToDisplay(phone) : ''
@@ -119,6 +123,15 @@ export function ChatPanel({ remoteJid, instanceName, conversation, onBack }: Cha
           <p className="text-[11px] text-muted-foreground">{displayPhone}</p>
         </button>
 
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8 shrink-0"
+          title="Agendar Reunião"
+          onClick={() => setShowMeetingModal(true)}
+        >
+          <Calendar className="h-4 w-4" />
+        </Button>
         <ContactTags remoteJid={remoteJid} />
       </div>
 
@@ -257,6 +270,18 @@ export function ChatPanel({ remoteJid, instanceName, conversation, onBack }: Cha
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Meeting modal */}
+      {user && (
+        <MeetingModal
+          open={showMeetingModal}
+          onClose={() => setShowMeetingModal(false)}
+          onSave={() => setShowMeetingModal(false)}
+          defaultLeadId={lead?.id || null}
+          defaultContactJid={remoteJid}
+          userId={user.id}
+        />
+      )}
     </div>
   )
 }

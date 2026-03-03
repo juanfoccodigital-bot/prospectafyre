@@ -24,6 +24,7 @@ import {
   useRanking,
   useLeadsByEspecialidade,
   useLeadsByDDD,
+  useRevenueChart,
 } from '@/hooks/use-stats'
 import type { DateRange } from '@/types'
 
@@ -53,6 +54,7 @@ export function DashboardCharts({ dateRange }: { dateRange?: DateRange }) {
   const { ranking, loading: rankingLoading } = useRanking(dateRange)
   const { data: espData, loading: espLoading } = useLeadsByEspecialidade(dateRange)
   const { data: dddData, loading: dddLoading } = useLeadsByDDD(dateRange)
+  const { data: revenueData, loading: revenueLoading } = useRevenueChart(dateRange)
 
   const conversionData = ranking.map((r) => ({
     name: r.userName,
@@ -209,6 +211,56 @@ export function DashboardCharts({ dateRange }: { dateRange?: DateRange }) {
                       <Cell key={`ddd-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Bar Chart - Faturamento Mensal */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.43 }} className="lg:col-span-2">
+        <Card className="border-border/50 bg-card/80">
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Faturamento Mensal (Fechados)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {revenueLoading ? (
+              <Skeleton className="h-52" />
+            ) : revenueData.length === 0 ? (
+              <div className="flex h-52 items-center justify-center text-sm text-muted-foreground">
+                Nenhum valor de fechamento registrado
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={revenueData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2A2A2A" />
+                  <XAxis dataKey="month" tick={{ fill: '#A0A0A0', fontSize: 12 }} />
+                  <YAxis
+                    tick={{ fill: '#A0A0A0', fontSize: 11 }}
+                    tickFormatter={(v) =>
+                      new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                        notation: 'compact',
+                        maximumSignificantDigits: 3,
+                      }).format(v)
+                    }
+                  />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null
+                      return (
+                        <div className="rounded-lg border border-border bg-card p-3 shadow-xl">
+                          <p className="text-xs text-muted-foreground">{payload[0].payload.month}</p>
+                          <p className="text-sm font-bold text-fyre">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(payload[0].value as number)}
+                          </p>
+                        </div>
+                      )
+                    }}
+                  />
+                  <Bar dataKey="valor" name="Faturamento" fill="#C0DB52" radius={[4, 4, 0, 0]} animationDuration={1200} />
                 </BarChart>
               </ResponsiveContainer>
             )}

@@ -27,6 +27,7 @@ export interface Lead {
   ddd: string | null
   especialidade: string | null
   faturamento: number | null
+  valor_fechamento: number | null
   status: LeadStatus
   assigned_to: string
   observacoes: string | null
@@ -71,6 +72,8 @@ export interface DashboardStats {
   leadsPerdidos: number
   taxaConversao: number
   taxaResposta: number
+  faturamentoFechado: number
+  taxaChurn: number
 }
 
 export interface UserScore {
@@ -181,4 +184,25 @@ export interface WhatsAppContact {
   updated_at: string
   tags?: string[]
   lead?: Lead | null
+}
+
+// Meetings
+
+export type MeetingStatus = 'agendada' | 'realizada' | 'cancelada'
+
+export interface Meeting {
+  id: string
+  titulo: string
+  descricao: string | null
+  scheduled_at: string
+  duration_min: number
+  status: MeetingStatus
+  lead_id: string | null
+  contact_jid: string | null
+  created_by: string
+  created_at: string
+  updated_at: string
+  // joined
+  lead?: Lead | null
+  creator?: User | null
 }

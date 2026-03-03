@@ -54,6 +54,7 @@ export function LeadModal({ lead, open, onClose, onSave }: LeadModalProps) {
     ddd: '',
     especialidade: '',
     faturamento: '',
+    valor_fechamento: '',
     status: 'novo' as LeadStatus,
     assigned_to: '',
     observacoes: '',
@@ -76,6 +77,7 @@ export function LeadModal({ lead, open, onClose, onSave }: LeadModalProps) {
         ddd: lead.ddd || '',
         especialidade: lead.especialidade || '',
         faturamento: lead.faturamento?.toString() || '',
+        valor_fechamento: lead.valor_fechamento?.toString() || '',
         status: lead.status,
         assigned_to: lead.assigned_to,
         observacoes: lead.observacoes || '',
@@ -99,6 +101,7 @@ export function LeadModal({ lead, open, onClose, onSave }: LeadModalProps) {
         ddd: form.ddd || null,
         especialidade: form.especialidade || null,
         faturamento: form.faturamento ? parseFloat(form.faturamento) : null,
+        valor_fechamento: form.valor_fechamento ? parseFloat(form.valor_fechamento) : null,
         status: form.status,
         assigned_to: form.assigned_to,
         observacoes: form.observacoes || null,
@@ -246,6 +249,16 @@ export function LeadModal({ lead, open, onClose, onSave }: LeadModalProps) {
                     value={form.faturamento}
                     onChange={(e) => setForm({ ...form, faturamento: e.target.value })}
                     className="bg-background/50"
+                  />
+                </div>
+                <div>
+                  <Label>Valor Fechamento R$</Label>
+                  <Input
+                    type="number"
+                    value={form.valor_fechamento}
+                    onChange={(e) => setForm({ ...form, valor_fechamento: e.target.value })}
+                    className="bg-background/50"
+                    placeholder="0.00"
                   />
                 </div>
               </div>
