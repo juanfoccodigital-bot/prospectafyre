@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     .limit(limit)
 
   if (instanceName) {
-    query = query.or(`instance_name.eq.${instanceName},instance_name.is.null`)
+    query = query.eq('instance_name', instanceName)
   }
 
   console.log('[GET /messages]', { remoteJid, instanceName, limit })

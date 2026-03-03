@@ -18,7 +18,7 @@ export async function GET() {
     .order('created_at', { ascending: false })
 
   if (instanceName) {
-    messagesQuery = messagesQuery.or(`instance_name.eq.${instanceName},instance_name.is.null`)
+    messagesQuery = messagesQuery.eq('instance_name', instanceName)
   }
 
   console.log('[GET /conversations]', { instanceName, userId: authUser?.id })
