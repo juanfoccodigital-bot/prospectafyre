@@ -7,8 +7,6 @@ export function useWhatsAppMessages(remoteJid: string | null) {
   const [messages, setMessages] = useState<WhatsAppMessage[]>([])
   const [loading, setLoading] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  // Temp messages that haven't been persisted yet — always merged into state
-  const pendingRef = useRef<WhatsAppMessage[]>([])
 
   const fetchMessages = useCallback(async () => {
     if (!remoteJid) {
@@ -19,13 +17,19 @@ export function useWhatsAppMessages(remoteJid: string | null) {
       const res = await fetch(`/api/whatsapp/messages?remoteJid=${encodeURIComponent(remoteJid)}&limit=100`)
       const data = await res.json()
       if (Array.isArray(data)) {
-        // Always merge: server data + any pending optimistic messages
-        const pending = pendingRef.current
-        if (pending.length) {
-          setMessages([...data, ...pending])
-        } else {
-          setMessages(data)
-        }
+        // Functional update: always preserves temp messages until server confirms them
+        setMessages(prev => {
+          const temps = prev.filter(m => m.id.startsWith('temp-'))
+          if (!temps.length) return data
+
+          // Keep temps that have NO matching server outbound message yet
+          // Auto-expire after 30s as safety net
+          const keptTemps = temps.filter(temp =>
+            !data.some((d: WhatsAppMessage) => d.direction === 'outbound' && d.content === temp.content) &&
+            Date.now() - new Date(temp.created_at).getTime() < 30000
+          )
+          return keptTemps.length ? [...data, ...keptTemps] : data
+        })
       }
     } catch {
       // ignore
@@ -35,8 +39,9 @@ export function useWhatsAppMessages(remoteJid: string | null) {
   }, [remoteJid])
 
   const sendText = useCallback(async (instanceName: string, number: string, text: string) => {
+    // Optimistic: show immediately — polling will preserve it until server confirms
     const tempId = `temp-${Date.now()}`
-    const optimistic: WhatsAppMessage = {
+    setMessages(prev => [...prev, {
       id: tempId,
       instance_name: instanceName,
       remote_jid: `${number.replace(/\D/g, '')}@s.whatsapp.net`,
@@ -50,28 +55,16 @@ export function useWhatsAppMessages(remoteJid: string | null) {
       status: 'sent' as const,
       lead_id: null,
       created_at: new Date().toISOString(),
-    }
+    }])
 
-    // Add to pending and show immediately
-    pendingRef.current = [...pendingRef.current, optimistic]
-    setMessages((prev) => [...prev, optimistic])
-
-    try {
-      const res = await fetch('/api/whatsapp/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ instanceName, number, text }),
-      })
-      // Message saved to DB — remove from pending, refetch gets the real one
-      pendingRef.current = pendingRef.current.filter((m) => m.id !== tempId)
-      await fetchMessages()
-      return res.ok
-    } catch {
-      pendingRef.current = pendingRef.current.filter((m) => m.id !== tempId)
-      await fetchMessages()
-      return false
-    }
-  }, [fetchMessages])
+    // Fire and forget — polling handles the rest
+    const res = await fetch('/api/whatsapp/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ instanceName, number, text }),
+    })
+    return res.ok
+  }, [])
 
   const sendMedia = useCallback(async (
     instanceName: string,
