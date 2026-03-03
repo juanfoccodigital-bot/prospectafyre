@@ -7,15 +7,18 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ContactTable } from '@/components/contacts/contact-table'
 import { ContactModal } from '@/components/contacts/contact-modal'
+import { ConvertToLeadModal } from '@/components/contacts/convert-to-lead-modal'
 import { useContacts } from '@/hooks/use-contacts'
 import type { WhatsAppContact } from '@/types'
 import { jidToPhone, phoneToDisplay } from '@/lib/evolution/utils'
 
 export default function ContatosPage() {
-  const { contacts, loading, createContact, updateContact, deleteContact } = useContacts()
+  const { contacts, loading, refetch, createContact, updateContact, deleteContact } = useContacts()
   const [search, setSearch] = useState('')
   const [selectedContact, setSelectedContact] = useState<WhatsAppContact | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const [convertContact, setConvertContact] = useState<WhatsAppContact | null>(null)
+  const [convertOpen, setConvertOpen] = useState(false)
 
   const filtered = useMemo(() => {
     if (!search) return contacts
@@ -43,6 +46,11 @@ export default function ContatosPage() {
     const name = contact.nome || contact.push_name || phoneToDisplay(jidToPhone(contact.remote_jid))
     if (!confirm(`Deletar o contato "${name}"?`)) return
     await deleteContact(contact.remote_jid)
+  }
+
+  const handleConvert = (contact: WhatsAppContact) => {
+    setConvertContact(contact)
+    setConvertOpen(true)
   }
 
   const handleSave = async (data: { phone?: string; nome?: string; observacoes?: string }) => {
@@ -90,6 +98,7 @@ export default function ContatosPage() {
         loading={loading}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onConvert={handleConvert}
       />
 
       <ContactModal
@@ -100,6 +109,16 @@ export default function ContatosPage() {
           setSelectedContact(null)
         }}
         onSave={handleSave}
+      />
+
+      <ConvertToLeadModal
+        contact={convertContact}
+        open={convertOpen}
+        onClose={() => {
+          setConvertOpen(false)
+          setConvertContact(null)
+        }}
+        onConverted={refetch}
       />
     </motion.div>
   )

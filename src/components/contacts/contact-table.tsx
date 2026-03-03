@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Edit, MessageSquare, Trash2 } from 'lucide-react'
+import { Edit, MessageSquare, Trash2, UserPlus } from 'lucide-react'
 import type { WhatsAppContact } from '@/types'
 import { LEAD_STATUS_CONFIG } from '@/types'
 import { jidToPhone, phoneToDisplay } from '@/lib/evolution/utils'
@@ -23,9 +23,10 @@ interface ContactTableProps {
   loading: boolean
   onEdit: (contact: WhatsAppContact) => void
   onDelete: (contact: WhatsAppContact) => void
+  onConvert: (contact: WhatsAppContact) => void
 }
 
-export function ContactTable({ contacts, loading, onEdit, onDelete }: ContactTableProps) {
+export function ContactTable({ contacts, loading, onEdit, onDelete, onConvert }: ContactTableProps) {
   const router = useRouter()
 
   if (loading) {
@@ -147,6 +148,17 @@ export function ContactTable({ contacts, loading, onEdit, onDelete }: ContactTab
                     >
                       <MessageSquare className="h-3.5 w-3.5" />
                     </Button>
+                    {!contact.lead && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-[var(--fyre)] hover:text-[var(--fyre)]"
+                        title="Converter em Lead"
+                        onClick={() => onConvert(contact)}
+                      >
+                        <UserPlus className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                     <Button
                       size="icon"
                       variant="ghost"
