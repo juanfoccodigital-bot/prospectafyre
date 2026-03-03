@@ -154,8 +154,8 @@ function AtendimentoContent() {
             </div>
 
             {/* Chat layout */}
-            <div className="flex min-h-0 flex-1">
-              <div className={`w-full flex-shrink-0 lg:w-80 ${showMobileChat ? 'hidden lg:flex' : 'flex'}`}>
+            <div className="flex min-h-0 flex-1 overflow-hidden">
+              <div className={`w-full flex-shrink-0 overflow-hidden lg:w-80 ${showMobileChat ? 'hidden lg:flex' : 'flex'}`}>
                 <ConversationList
                   conversations={conversations}
                   loading={convsLoading}
