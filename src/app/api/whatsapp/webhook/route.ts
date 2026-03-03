@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { jidToPhone } from '@/lib/evolution/utils'
 
-// Public endpoint — no auth middleware
-// Uses service-level Supabase client (no cookies needed)
 function getSupabase() {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
@@ -43,13 +41,13 @@ async function handleMessagesUpsert(
   if (!key) return
 
   const remoteJid = key.remoteJid as string
-  if (!remoteJid || remoteJid.includes('@g.us')) return // Skip group messages
+  if (!remoteJid || remoteJid.includes('@g.us')) return
 
   const fromMe = key.fromMe as boolean
   const messageId = key.id as string
   const direction = fromMe ? 'outbound' : 'inbound'
+  const pushName = data.pushName as string | undefined
 
-  // Extract message content
   const message = data.message as Record<string, unknown> | undefined
   let content: string | null = null
   let mediaType: string | null = null
@@ -58,45 +56,47 @@ async function handleMessagesUpsert(
   let fileName: string | null = null
 
   if (message) {
-    // Text message
     content = (message.conversation as string) ||
       (message.extendedTextMessage as Record<string, unknown>)?.text as string ||
       null
 
-    // Image
     if (message.imageMessage) {
       const img = message.imageMessage as Record<string, unknown>
       mediaType = 'image'
       content = (img.caption as string) || content
       mediaMimeType = img.mimetype as string || null
-      mediaUrl = img.base64 as string || img.url as string || null
+      mediaUrl = img.base64 as string || null
     }
 
-    // Video
     if (message.videoMessage) {
       const vid = message.videoMessage as Record<string, unknown>
       mediaType = 'video'
       content = (vid.caption as string) || content
       mediaMimeType = vid.mimetype as string || null
-      mediaUrl = vid.base64 as string || vid.url as string || null
+      mediaUrl = vid.base64 as string || null
     }
 
-    // Audio
     if (message.audioMessage) {
       const aud = message.audioMessage as Record<string, unknown>
       mediaType = 'audio'
       mediaMimeType = aud.mimetype as string || null
-      mediaUrl = aud.base64 as string || aud.url as string || null
+      mediaUrl = aud.base64 as string || null
     }
 
-    // Document
     if (message.documentMessage) {
       const doc = message.documentMessage as Record<string, unknown>
       mediaType = 'document'
       fileName = doc.fileName as string || null
       mediaMimeType = doc.mimetype as string || null
-      mediaUrl = doc.base64 as string || doc.url as string || null
+      mediaUrl = doc.base64 as string || null
       content = (doc.caption as string) || content
+    }
+
+    if (message.stickerMessage) {
+      const stk = message.stickerMessage as Record<string, unknown>
+      mediaType = 'image'
+      mediaMimeType = stk.mimetype as string || 'image/webp'
+      mediaUrl = stk.base64 as string || null
     }
   }
 
@@ -120,7 +120,6 @@ async function handleMessagesUpsert(
     }
   }
 
-  // Upsert message (avoid duplicates)
   await supabase.from('whatsapp_messages').upsert(
     {
       instance_name: instanceName,
@@ -132,11 +131,20 @@ async function handleMessagesUpsert(
       media_url: mediaUrl,
       media_mime_type: mediaMimeType,
       file_name: fileName,
+      push_name: pushName || null,
       status: fromMe ? 'sent' : 'delivered',
       lead_id: leadId,
     },
     { onConflict: 'message_id' }
   )
+
+  // Cache contact info
+  if (pushName && !fromMe) {
+    await supabase.from('whatsapp_contacts').upsert(
+      { remote_jid: remoteJid, push_name: pushName, updated_at: new Date().toISOString() },
+      { onConflict: 'remote_jid' }
+    )
+  }
 }
 
 async function handleMessagesUpdate(
@@ -145,23 +153,15 @@ async function handleMessagesUpdate(
 ) {
   const key = data.key as Record<string, unknown> | undefined
   if (!key) return
-
   const messageId = key.id as string
   const update = data.update as Record<string, unknown> | undefined
   if (!messageId || !update) return
-
   const status = update.status as number | undefined
   if (!status) return
-
-  // WhatsApp status codes: 2=sent, 3=delivered, 4=read
   const statusMap: Record<number, string> = { 2: 'sent', 3: 'delivered', 4: 'read' }
   const newStatus = statusMap[status]
   if (!newStatus) return
-
-  await supabase
-    .from('whatsapp_messages')
-    .update({ status: newStatus })
-    .eq('message_id', messageId)
+  await supabase.from('whatsapp_messages').update({ status: newStatus }).eq('message_id', messageId)
 }
 
 async function handleConnectionUpdate(
@@ -171,11 +171,6 @@ async function handleConnectionUpdate(
 ) {
   const state = data.state as string | undefined
   if (!state) return
-
   const status = state === 'open' ? 'connected' : state === 'connecting' ? 'connecting' : 'disconnected'
-
-  await supabase
-    .from('whatsapp_instances')
-    .update({ status })
-    .eq('instance_name', instanceName)
+  await supabase.from('whatsapp_instances').update({ status }).eq('instance_name', instanceName)
 }

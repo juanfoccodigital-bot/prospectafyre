@@ -39,13 +39,16 @@ export async function POST(req: Request) {
     let result: unknown
     const remoteJid = `${number.replace(/\D/g, '')}@s.whatsapp.net`
 
+    // Strip data: URI prefix for Evolution API (it expects raw base64)
+    const rawMedia = media ? media.replace(/^data:[^;]+;base64,/, '') : media
+
     if (mediatype === 'audio') {
-      result = await evolutionApi.sendAudio(instanceName, number, media)
+      result = await evolutionApi.sendAudio(instanceName, number, rawMedia)
     } else if (mediatype && media) {
       result = await evolutionApi.sendMedia(instanceName, {
         number,
         mediatype,
-        media,
+        media: rawMedia,
         caption,
         fileName,
       })

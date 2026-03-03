@@ -10,46 +10,47 @@ interface ConversationItemProps {
 }
 
 export function ConversationItem({ conversation, active, onClick }: ConversationItemProps) {
-  const name = conversation.lead?.nome || conversation.phone
+  const name = conversation.contact_name || conversation.lead?.nome || conversation.phone
   const initial = name.charAt(0).toUpperCase()
-
   const timeAgo = formatTimeAgo(conversation.last_message_at)
 
   return (
     <button
       onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${
+      className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors ${
         active
           ? 'bg-primary/10 border border-primary/20'
           : 'hover:bg-muted/50 border border-transparent'
       }`}
     >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-bold text-primary">
-        {initial}
-      </div>
+      {/* Avatar */}
+      {conversation.profile_pic_url ? (
+        <img
+          src={conversation.profile_pic_url}
+          alt=""
+          className="h-11 w-11 shrink-0 rounded-full object-cover"
+        />
+      ) : (
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-bold text-primary">
+          {initial}
+        </div>
+      )}
 
+      {/* Info */}
       <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <p className="truncate text-sm font-medium">{name}</p>
           <span className="shrink-0 text-[10px] text-muted-foreground">{timeAgo}</span>
         </div>
-        <p className="truncate text-xs text-muted-foreground">
+        {conversation.contact_name && (
+          <p className="truncate text-[11px] text-muted-foreground">{conversation.phone}</p>
+        )}
+        <p className="mt-0.5 truncate text-xs text-muted-foreground">
           {conversation.last_message || 'Sem mensagens'}
         </p>
-        {conversation.tags.length > 0 && (
-          <div className="mt-1 flex gap-1">
-            {conversation.tags.slice(0, 2).map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] text-primary"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
       </div>
 
+      {/* Unread badge */}
       {conversation.unread_count > 0 && (
         <Badge className="h-5 min-w-5 justify-center bg-green-600 px-1.5 text-[10px]">
           {conversation.unread_count > 99 ? '99+' : conversation.unread_count}

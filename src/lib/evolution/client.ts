@@ -31,6 +31,7 @@ export const evolutionApi = {
         integration: 'WHATSAPP-BAILEYS',
         qrcode: true,
         webhook: {
+          enabled: true,
           url: webhookUrl,
           events: [
             'QRCODE_UPDATED',
@@ -54,7 +55,6 @@ export const evolutionApi = {
     const data = await request<{ instance: { instanceName: string; state: string } }>(
       `/instance/connectionState/${instanceName}`
     )
-    // Normalize: return flat { state } for easier consumption
     return { state: data.instance.state }
   },
 
@@ -99,15 +99,25 @@ export const evolutionApi = {
     })
   },
 
+  // Contacts
+  async fetchProfilePicture(instanceName: string, number: string) {
+    return request<{ profilePictureUrl?: string; wuid?: string }>(
+      `/chat/fetchProfilePictureUrl/${instanceName}?number=${number}`,
+    )
+  },
+
   // Webhook
   async setWebhook(instanceName: string, url: string, events: string[]) {
     return request(`/webhook/set/${instanceName}`, {
       method: 'POST',
       body: JSON.stringify({
-        url,
-        events,
-        webhook_by_events: false,
-        webhook_base64: true,
+        webhook: {
+          enabled: true,
+          url,
+          events,
+          webhook_by_events: false,
+          webhook_base64: true,
+        },
       }),
     })
   },

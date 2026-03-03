@@ -146,6 +146,8 @@ export interface WhatsAppMessage {
 export interface Conversation {
   remote_jid: string
   phone: string
+  contact_name: string | null
+  profile_pic_url: string | null
   last_message: string | null
   last_message_at: string
   unread_count: number

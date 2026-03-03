@@ -1,10 +1,19 @@
 'use client'
 
-import { Check, CheckCheck, FileText, Play } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Check, CheckCheck, Download, FileText, Pause, Play } from 'lucide-react'
 import type { WhatsAppMessage } from '@/types'
 
 interface MessageBubbleProps {
   message: WhatsAppMessage
+}
+
+function getMediaSrc(url: string, mime?: string | null): string {
+  if (url.startsWith('data:')) return url
+  if (url.startsWith('http')) return url
+  // Raw base64 — add data: prefix
+  const mimeType = mime || 'application/octet-stream'
+  return `data:${mimeType};base64,${url}`
 }
 
 export function MessageBubble({ message }: MessageBubbleProps) {
@@ -23,36 +32,66 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             : 'rounded-bl-md bg-card border border-border/50'
         }`}
       >
-        {/* Media preview */}
+        {/* Image */}
         {message.media_type === 'image' && message.media_url && (
-          <div className="mb-1.5">
+          <div className="-mx-1 -mt-0.5 mb-1.5">
             <img
-              src={message.media_url.startsWith('data:') ? message.media_url : `data:image/jpeg;base64,${message.media_url}`}
-              alt="Imagem"
-              className="max-h-48 rounded-lg object-cover"
+              src={getMediaSrc(message.media_url, message.media_mime_type)}
+              alt=""
+              className="max-h-64 cursor-pointer rounded-lg object-cover"
+              onClick={() => window.open(getMediaSrc(message.media_url!, message.media_mime_type), '_blank')}
             />
           </div>
         )}
 
-        {message.media_type === 'video' && (
-          <div className="mb-1.5 flex h-32 items-center justify-center rounded-lg bg-black/20">
-            <Play className="h-8 w-8 text-white/70" />
+        {/* Video */}
+        {message.media_type === 'video' && message.media_url && (
+          <div className="-mx-1 -mt-0.5 mb-1.5">
+            <video
+              src={getMediaSrc(message.media_url, message.media_mime_type)}
+              controls
+              className="max-h-64 rounded-lg"
+              preload="metadata"
+            />
           </div>
         )}
 
-        {message.media_type === 'audio' && (
-          <div className="mb-1.5 flex items-center gap-2 rounded-lg bg-black/10 px-3 py-2">
-            <Play className="h-4 w-4 shrink-0" />
-            <div className="h-1 flex-1 rounded-full bg-current opacity-30" />
-            <span className="text-[10px] opacity-60">Audio</span>
-          </div>
+        {/* Audio */}
+        {message.media_type === 'audio' && message.media_url && (
+          <AudioPlayer src={getMediaSrc(message.media_url, message.media_mime_type)} isOutbound={isOutbound} />
         )}
 
-        {message.media_type === 'document' && (
-          <div className="mb-1.5 flex items-center gap-2 rounded-lg bg-black/10 px-3 py-2">
-            <FileText className="h-4 w-4 shrink-0" />
-            <span className="truncate text-xs">{message.file_name || 'Documento'}</span>
-          </div>
+        {/* Document */}
+        {message.media_type === 'document' && message.media_url && (
+          <a
+            href={getMediaSrc(message.media_url, message.media_mime_type)}
+            download={message.file_name || 'documento'}
+            className={`mb-1.5 flex items-center gap-2.5 rounded-lg px-3 py-2.5 ${
+              isOutbound ? 'bg-white/10' : 'bg-muted/50'
+            }`}
+          >
+            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+              isOutbound ? 'bg-white/10' : 'bg-primary/10'
+            }`}>
+              <FileText className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-medium">{message.file_name || 'Documento'}</p>
+              <p className={`text-[10px] ${isOutbound ? 'text-primary-foreground/50' : 'text-muted-foreground'}`}>
+                {message.media_mime_type?.split('/')[1]?.toUpperCase() || 'FILE'}
+              </p>
+            </div>
+            <Download className="h-4 w-4 shrink-0 opacity-50" />
+          </a>
+        )}
+
+        {/* Fallback for media without base64 */}
+        {message.media_type && !message.media_url && (
+          <p className="text-sm italic opacity-60">
+            {message.media_type === 'image' ? 'Imagem' :
+             message.media_type === 'video' ? 'Vídeo' :
+             message.media_type === 'audio' ? 'Áudio' : 'Arquivo'}
+          </p>
         )}
 
         {/* Text content */}
@@ -63,11 +102,64 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         {/* Time and status */}
         <div className={`mt-1 flex items-center justify-end gap-1 ${isOutbound ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>
           <span className="text-[10px]">{time}</span>
-          {isOutbound && (
-            <StatusIcon status={message.status} />
-          )}
+          {isOutbound && <StatusIcon status={message.status} />}
         </div>
       </div>
+    </div>
+  )
+}
+
+function AudioPlayer({ src, isOutbound }: { src: string; isOutbound: boolean }) {
+  const audioRef = useRef<HTMLAudioElement>(null)
+  const [playing, setPlaying] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [duration, setDuration] = useState(0)
+
+  const togglePlay = () => {
+    if (!audioRef.current) return
+    if (playing) {
+      audioRef.current.pause()
+    } else {
+      audioRef.current.play()
+    }
+    setPlaying(!playing)
+  }
+
+  const formatTime = (s: number) => {
+    const m = Math.floor(s / 60)
+    const sec = Math.floor(s % 60)
+    return `${m}:${sec.toString().padStart(2, '0')}`
+  }
+
+  return (
+    <div className={`mb-1.5 flex items-center gap-2.5 rounded-lg px-3 py-2 ${
+      isOutbound ? 'bg-white/10' : 'bg-muted/50'
+    }`}>
+      <audio
+        ref={audioRef}
+        src={src}
+        preload="metadata"
+        onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
+        onTimeUpdate={() => {
+          const a = audioRef.current
+          if (a) setProgress(a.duration ? (a.currentTime / a.duration) * 100 : 0)
+        }}
+        onEnded={() => { setPlaying(false); setProgress(0) }}
+      />
+      <button onClick={togglePlay} className="shrink-0">
+        {playing ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+      </button>
+      <div className="flex-1">
+        <div className={`h-1 rounded-full ${isOutbound ? 'bg-white/20' : 'bg-border'}`}>
+          <div
+            className={`h-1 rounded-full transition-all ${isOutbound ? 'bg-white/70' : 'bg-primary'}`}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+      <span className="text-[10px] tabular-nums opacity-60">
+        {duration ? formatTime(duration) : '0:00'}
+      </span>
     </div>
   )
 }
