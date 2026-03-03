@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Loader2 } from 'lucide-react'
 
 interface QRCodeDialogProps {
   open: boolean
@@ -25,24 +25,25 @@ export function QRCodeDialog({
   onRefreshQR,
 }: QRCodeDialogProps) {
   const refreshRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const onRefreshQRRef = useRef(onRefreshQR)
+  onRefreshQRRef.current = onRefreshQR
 
   // Fetch QR immediately when dialog opens, then auto-refresh every 30s
   useEffect(() => {
     if (open && status === 'connecting') {
-      onRefreshQR()
-      refreshRef.current = setInterval(onRefreshQR, 30000)
+      // Only refresh if we don't already have a QR code
+      if (!qrCode) {
+        onRefreshQRRef.current()
+      }
+      refreshRef.current = setInterval(() => onRefreshQRRef.current(), 30000)
     }
     return () => {
-      if (refreshRef.current) clearInterval(refreshRef.current)
+      if (refreshRef.current) {
+        clearInterval(refreshRef.current)
+        refreshRef.current = null
+      }
     }
-  }, [open, status, onRefreshQR])
-
-  // Auto-close when connected
-  useEffect(() => {
-    if (status === 'connected') {
-      onOpenChange(false)
-    }
-  }, [status, onOpenChange])
+  }, [open, status, qrCode])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -52,7 +53,16 @@ export function QRCodeDialog({
         </DialogHeader>
 
         <div className="flex flex-col items-center gap-4 py-4">
-          {status === 'connecting' && qrCode ? (
+          {status === 'connected' ? (
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500/20">
+                <svg className="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium text-green-500">WhatsApp Conectado!</p>
+            </div>
+          ) : qrCode ? (
             <>
               <div className="rounded-xl bg-white p-3">
                 <img
@@ -69,17 +79,11 @@ export function QRCodeDialog({
                 <span className="text-xs text-yellow-500">Aguardando leitura...</span>
               </div>
             </>
-          ) : status === 'connected' ? (
-            <div className="flex flex-col items-center gap-2">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500/20">
-                <svg className="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <p className="text-sm font-medium text-green-500">WhatsApp Conectado!</p>
-            </div>
           ) : (
-            <Skeleton className="h-56 w-56" />
+            <div className="flex h-56 w-56 flex-col items-center justify-center gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Gerando QR Code...</p>
+            </div>
           )}
         </div>
       </DialogContent>

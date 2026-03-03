@@ -8,7 +8,9 @@ export function useWhatsAppInstance() {
   const [status, setStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected')
   const [qrCode, setQrCode] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const instanceNameRef = useRef<string | null>(null)
 
   const fetchInstance = useCallback(async () => {
     try {
@@ -18,6 +20,7 @@ export function useWhatsAppInstance() {
         const inst = data[0] as WhatsAppInstance
         setInstance(inst)
         setStatus(inst.status)
+        instanceNameRef.current = inst.instance_name
         // Auto-fetch QR code when instance is in connecting state
         if (inst.status === 'connecting') {
           try {
@@ -43,32 +46,47 @@ export function useWhatsAppInstance() {
   }, [])
 
   const createInstance = useCallback(async (name: string) => {
-    setLoading(true)
+    setCreating(true)
+    instanceNameRef.current = name
     try {
-      await fetch('/api/whatsapp/instance', {
+      const postRes = await fetch('/api/whatsapp/instance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ instanceName: name }),
       })
+      const postData = await postRes.json()
+
+      // Extract QR from creation response (Evolution returns it with qrcode: true)
+      const qrFromCreate = postData?.qrcode?.base64 || postData?.base64
+      if (qrFromCreate) {
+        setQrCode(qrFromCreate)
+        setStatus('connecting')
+        setCreating(false)
+        // Fetch instance data in background
+        fetchInstance()
+        return
+      }
+
+      // Fallback: fetch QR separately
       setStatus('connecting')
-      // Fetch QR code
       const qrRes = await fetch(`/api/whatsapp/instance/${name}/qrcode`)
       const qrData = await qrRes.json()
       if (qrData.base64) {
         setQrCode(qrData.base64)
       }
       await fetchInstance()
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error('createInstance error:', err)
     } finally {
-      setLoading(false)
+      setCreating(false)
     }
   }, [fetchInstance])
 
   const refreshQRCode = useCallback(async () => {
-    if (!instance) return
+    const name = instance?.instance_name || instanceNameRef.current
+    if (!name) return
     try {
-      const res = await fetch(`/api/whatsapp/instance/${instance.instance_name}/qrcode`)
+      const res = await fetch(`/api/whatsapp/instance/${name}/qrcode`)
       const data = await res.json()
       if (data.base64) {
         setQrCode(data.base64)
@@ -79,20 +97,23 @@ export function useWhatsAppInstance() {
   }, [instance])
 
   const refreshStatus = useCallback(async () => {
-    if (!instance) return
+    const name = instance?.instance_name || instanceNameRef.current
+    if (!name) return
     try {
-      const res = await fetch(`/api/whatsapp/instance/${instance.instance_name}/status`)
+      const res = await fetch(`/api/whatsapp/instance/${name}/status`)
       const data = await res.json()
       if (data.status) {
         setStatus(data.status)
         if (data.status === 'connected') {
           setQrCode(null)
+          // Refetch instance to get full data
+          if (!instance) fetchInstance()
         }
       }
     } catch {
       // ignore
     }
-  }, [instance])
+  }, [instance, fetchInstance])
 
   const deleteInstance = useCallback(async () => {
     if (!instance) return
@@ -105,6 +126,7 @@ export function useWhatsAppInstance() {
       setInstance(null)
       setStatus('disconnected')
       setQrCode(null)
+      instanceNameRef.current = null
     } catch {
       // ignore
     }
@@ -135,6 +157,7 @@ export function useWhatsAppInstance() {
     status,
     qrCode,
     loading,
+    creating,
     createInstance,
     refreshQRCode,
     refreshStatus,

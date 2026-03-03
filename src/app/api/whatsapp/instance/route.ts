@@ -60,7 +60,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'instanceName required' }, { status: 400 })
   }
 
-  const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/whatsapp/webhook`
+  const webhookUrl = `${(process.env.NEXT_PUBLIC_APP_URL || '').trim()}/api/whatsapp/webhook`
 
   try {
     // Check if instance already exists on Evolution API
@@ -90,9 +90,13 @@ export async function POST(req: Request) {
     const supabase = await createClient()
     const { data: user } = await supabase.auth.getUser()
 
+    const resultObj = result as Record<string, unknown>
+    const instanceData = resultObj?.instance as Record<string, unknown> | undefined
+    const instanceId = instanceData?.instanceId as string || null
+
     await supabase.from('whatsapp_instances').upsert({
       instance_name: instanceName,
-      instance_id: (result as Record<string, unknown>)?.instanceId as string || null,
+      instance_id: instanceId,
       status: 'connecting',
       webhook_url: webhookUrl,
       created_by: user?.user?.id || null,

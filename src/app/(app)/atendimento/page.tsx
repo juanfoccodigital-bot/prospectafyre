@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Wifi, WifiOff } from 'lucide-react'
@@ -27,6 +27,7 @@ function AtendimentoContent() {
     status,
     qrCode,
     loading: instanceLoading,
+    creating,
     createInstance,
     refreshQRCode,
     deleteInstance,
@@ -47,7 +48,26 @@ function AtendimentoContent() {
     }
   }, [phoneParam])
 
+  // Auto-show QR dialog when QR code becomes available during creation
+  useEffect(() => {
+    if (qrCode && status === 'connecting') {
+      setShowQR(true)
+    }
+  }, [qrCode, status])
+
+  // Auto-close QR dialog when connected
+  useEffect(() => {
+    if (status === 'connected') {
+      setShowQR(false)
+    }
+  }, [status])
+
   const activeConversation = conversations.find((c) => c.remote_jid === activeJid) || null
+
+  const handleConnect = useCallback((name: string) => {
+    createInstance(name)
+    setShowQR(true)
+  }, [createInstance])
 
   const handleSelectConversation = (jid: string) => {
     setActiveJid(jid)
@@ -64,8 +84,8 @@ function AtendimentoContent() {
     setShowMobileChat(true)
   }
 
-  // Loading state
-  if (instanceLoading) {
+  // Initial loading (only on first mount, not during creation)
+  if (instanceLoading && !creating) {
     return (
       <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
         <Skeleton className="h-64 w-full max-w-md" />
@@ -73,91 +93,87 @@ function AtendimentoContent() {
     )
   }
 
-  // Show setup if no instance or disconnected
-  if (!instance || status === 'disconnected') {
-    return (
+  // Show setup if no instance or disconnected (and not in the middle of creating)
+  const showSetup = (!instance || status === 'disconnected') && !creating
+
+  return (
+    <>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         className="flex h-[calc(100vh-4rem)] flex-col"
       >
-        <ConnectionSetup
-          status={status}
-          qrCode={qrCode}
-          loading={instanceLoading}
-          userName={user?.name || user?.email?.split('@')[0] || 'usuario'}
-          onConnect={createInstance}
-          onRefreshQR={refreshQRCode}
-        />
-      </motion.div>
-    )
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="flex h-[calc(100vh-4rem)] flex-col"
-    >
-      {/* Status bar */}
-      <div className="flex items-center justify-between border-b border-border/50 px-4 py-2">
-        <div className="flex items-center gap-3">
-          <h1 className="text-sm font-semibold">Atendimento WhatsApp</h1>
-          <ConnectionStatusBadge />
-        </div>
-        <div className="flex items-center gap-2">
-          {status === 'connecting' && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 gap-1.5 text-xs"
-              onClick={() => setShowQR(true)}
-            >
-              <Wifi className="h-3 w-3" />
-              Ver QR Code
-            </Button>
-          )}
-          {status === 'connected' && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 gap-1.5 text-xs text-muted-foreground"
-              onClick={deleteInstance}
-            >
-              <WifiOff className="h-3 w-3" />
-              Desconectar
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Chat layout */}
-      <div className="flex min-h-0 flex-1">
-        {/* Conversation list — hidden on mobile when chat is open */}
-        <div className={`w-full flex-shrink-0 lg:w-80 ${showMobileChat ? 'hidden lg:flex' : 'flex'}`}>
-          <ConversationList
-            conversations={conversations}
-            loading={convsLoading}
-            activeJid={activeJid}
-            onSelect={handleSelectConversation}
-            onNewChat={handleNewChat}
+        {showSetup ? (
+          <ConnectionSetup
+            status={status}
+            qrCode={qrCode}
+            loading={creating}
+            userName={user?.name || user?.email?.split('@')[0] || 'usuario'}
+            onConnect={handleConnect}
+            onRefreshQR={refreshQRCode}
           />
-        </div>
+        ) : (
+          <>
+            {/* Status bar */}
+            <div className="flex items-center justify-between border-b border-border/50 px-4 py-2">
+              <div className="flex items-center gap-3">
+                <h1 className="text-sm font-semibold">Atendimento WhatsApp</h1>
+                <ConnectionStatusBadge />
+              </div>
+              <div className="flex items-center gap-2">
+                {status === 'connecting' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 gap-1.5 text-xs"
+                    onClick={() => setShowQR(true)}
+                  >
+                    <Wifi className="h-3 w-3" />
+                    Ver QR Code
+                  </Button>
+                )}
+                {status === 'connected' && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 gap-1.5 text-xs text-muted-foreground"
+                    onClick={deleteInstance}
+                  >
+                    <WifiOff className="h-3 w-3" />
+                    Desconectar
+                  </Button>
+                )}
+              </div>
+            </div>
 
-        {/* Chat panel — hidden on mobile when list is open */}
-        <div className={`min-w-0 flex-1 ${!showMobileChat ? 'hidden lg:flex' : 'flex'}`}>
-          <div className="flex-1">
-            <ChatPanel
-              remoteJid={activeJid}
-              instanceName={instance.instance_name}
-              conversation={activeConversation}
-              onBack={() => setShowMobileChat(false)}
-            />
-          </div>
-        </div>
-      </div>
+            {/* Chat layout */}
+            <div className="flex min-h-0 flex-1">
+              <div className={`w-full flex-shrink-0 lg:w-80 ${showMobileChat ? 'hidden lg:flex' : 'flex'}`}>
+                <ConversationList
+                  conversations={conversations}
+                  loading={convsLoading}
+                  activeJid={activeJid}
+                  onSelect={handleSelectConversation}
+                  onNewChat={handleNewChat}
+                />
+              </div>
 
-      {/* QR Code dialog */}
+              <div className={`min-w-0 flex-1 ${!showMobileChat ? 'hidden lg:flex' : 'flex'}`}>
+                <div className="flex-1">
+                  <ChatPanel
+                    remoteJid={activeJid}
+                    instanceName={instance?.instance_name || ''}
+                    conversation={activeConversation}
+                    onBack={() => setShowMobileChat(false)}
+                  />
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </motion.div>
+
+      {/* QR Code dialog — always rendered outside conditional branches */}
       <QRCodeDialog
         open={showQR}
         onOpenChange={setShowQR}
@@ -165,7 +181,7 @@ function AtendimentoContent() {
         status={status}
         onRefreshQR={refreshQRCode}
       />
-    </motion.div>
+    </>
   )
 }
 
