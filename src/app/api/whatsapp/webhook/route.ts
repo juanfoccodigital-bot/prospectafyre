@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { jidToPhone } from '@/lib/evolution/utils'
+import { evolutionApi } from '@/lib/evolution/client'
 
 function getSupabase() {
   return createServerClient(
@@ -63,8 +64,16 @@ async function handleMessagesUpsert(
 
   const fromMe = key.fromMe as boolean
   const messageId = key.id as string
-  const direction = fromMe ? 'outbound' : 'inbound'
   const pushName = data.pushName as string | undefined
+
+  // Skip outbound messages — our POST route already saves them
+  // The SEND_MESSAGE webhook echo would overwrite media_url with null
+  if (fromMe) {
+    // Still cache contact push_name updates for outbound if needed
+    return
+  }
+
+  const direction = 'inbound'
 
   const message = data.message as Record<string, unknown> | undefined
   let content: string | null = null
@@ -118,6 +127,23 @@ async function handleMessagesUpsert(
     }
   }
 
+  // If media detected but no base64 in webhook, download from Evolution API
+  if (mediaType && !mediaUrl && instanceName) {
+    try {
+      const result = await evolutionApi.getBase64FromMediaMessage(instanceName, {
+        remoteJid,
+        fromMe: false,
+        id: messageId,
+      })
+      if (result.base64) {
+        mediaUrl = `data:${result.mimetype || mediaMimeType || 'application/octet-stream'};base64,${result.base64}`
+        if (result.mimetype) mediaMimeType = result.mimetype
+      }
+    } catch {
+      // Media download failed — save message without media data
+    }
+  }
+
   // Auto-link to lead
   const phone = jidToPhone(remoteJid)
   const phoneDigits = phone.replace(/^55/, '')
@@ -150,16 +176,34 @@ async function handleMessagesUpsert(
       media_mime_type: mediaMimeType,
       file_name: fileName,
       push_name: pushName || null,
-      status: fromMe ? 'sent' : 'delivered',
+      status: 'delivered',
       lead_id: leadId,
     },
     { onConflict: 'message_id' }
   )
 
-  // Cache contact info
-  if (pushName && !fromMe) {
+  // Cache contact info + fetch profile pic
+  if (pushName) {
+    const contactData: Record<string, unknown> = {
+      remote_jid: remoteJid,
+      push_name: pushName,
+      updated_at: new Date().toISOString(),
+    }
+
+    // Try to fetch profile picture if we have instanceName
+    if (instanceName) {
+      try {
+        const pic = await evolutionApi.fetchProfilePicture(instanceName, phone)
+        if (pic.profilePictureUrl) {
+          contactData.profile_pic_url = pic.profilePictureUrl
+        }
+      } catch {
+        // Profile pic not available
+      }
+    }
+
     await supabase.from('whatsapp_contacts').upsert(
-      { remote_jid: remoteJid, push_name: pushName, updated_at: new Date().toISOString() },
+      contactData,
       { onConflict: 'remote_jid' }
     )
   }

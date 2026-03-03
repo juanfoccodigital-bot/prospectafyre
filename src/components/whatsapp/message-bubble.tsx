@@ -114,6 +114,9 @@ function AudioPlayer({ src, isOutbound }: { src: string; isOutbound: boolean }) 
   const [playing, setPlaying] = useState(false)
   const [progress, setProgress] = useState(0)
   const [duration, setDuration] = useState(0)
+  const [elapsed, setElapsed] = useState(0)
+
+  const isValidDuration = (d: number) => Number.isFinite(d) && d > 0 && d < 36000
 
   const togglePlay = () => {
     if (!audioRef.current) return
@@ -126,6 +129,7 @@ function AudioPlayer({ src, isOutbound }: { src: string; isOutbound: boolean }) 
   }
 
   const formatTime = (s: number) => {
+    if (!Number.isFinite(s) || s < 0) return '0:00'
     const m = Math.floor(s / 60)
     const sec = Math.floor(s % 60)
     return `${m}:${sec.toString().padStart(2, '0')}`
@@ -139,12 +143,24 @@ function AudioPlayer({ src, isOutbound }: { src: string; isOutbound: boolean }) 
         ref={audioRef}
         src={src}
         preload="metadata"
-        onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
+        onLoadedMetadata={() => {
+          const d = audioRef.current?.duration || 0
+          if (isValidDuration(d)) setDuration(d)
+        }}
+        onDurationChange={() => {
+          const d = audioRef.current?.duration || 0
+          if (isValidDuration(d)) setDuration(d)
+        }}
         onTimeUpdate={() => {
           const a = audioRef.current
-          if (a) setProgress(a.duration ? (a.currentTime / a.duration) * 100 : 0)
+          if (!a) return
+          setElapsed(a.currentTime)
+          if (isValidDuration(a.duration)) {
+            setDuration(a.duration)
+            setProgress((a.currentTime / a.duration) * 100)
+          }
         }}
-        onEnded={() => { setPlaying(false); setProgress(0) }}
+        onEnded={() => { setPlaying(false); setProgress(0); setElapsed(0) }}
       />
       <button onClick={togglePlay} className="shrink-0">
         {playing ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
@@ -158,7 +174,7 @@ function AudioPlayer({ src, isOutbound }: { src: string; isOutbound: boolean }) 
         </div>
       </div>
       <span className="text-[10px] tabular-nums opacity-60">
-        {duration ? formatTime(duration) : '0:00'}
+        {playing ? formatTime(elapsed) : (isValidDuration(duration) ? formatTime(duration) : '0:00')}
       </span>
     </div>
   )

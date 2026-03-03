@@ -99,6 +99,20 @@ export const evolutionApi = {
     })
   },
 
+  // Media
+  async getBase64FromMediaMessage(
+    instanceName: string,
+    messageKey: { remoteJid: string; fromMe: boolean; id: string }
+  ) {
+    return request<{ base64: string; mimetype: string }>(
+      `/chat/getBase64FromMediaMessage/${instanceName}`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ message: { key: messageKey } }),
+      }
+    )
+  },
+
   // Contacts
   async fetchProfilePicture(instanceName: string, number: string) {
     return request<{ profilePictureUrl?: string; wuid?: string }>(
