@@ -1,0 +1,178 @@
+'use client'
+
+import { Suspense, useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { motion } from 'framer-motion'
+import { Wifi, WifiOff } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { ConnectionSetup } from '@/components/whatsapp/connection-setup'
+import { ConnectionStatusBadge } from '@/components/whatsapp/connection-status-badge'
+import { ConversationList } from '@/components/whatsapp/conversation-list'
+import { ChatPanel } from '@/components/whatsapp/chat-panel'
+import { QRCodeDialog } from '@/components/whatsapp/qr-code-dialog'
+import { useWhatsAppInstance } from '@/hooks/use-whatsapp-instance'
+import { useConversations } from '@/hooks/use-conversations'
+import { phoneToJid } from '@/lib/evolution/utils'
+
+function AtendimentoContent() {
+  const searchParams = useSearchParams()
+  const phoneParam = searchParams.get('phone')
+
+  const {
+    instance,
+    status,
+    qrCode,
+    loading: instanceLoading,
+    createInstance,
+    refreshQRCode,
+    deleteInstance,
+  } = useWhatsAppInstance()
+
+  const { conversations, loading: convsLoading } = useConversations()
+
+  const [activeJid, setActiveJid] = useState<string | null>(null)
+  const [showQR, setShowQR] = useState(false)
+  const [showMobileChat, setShowMobileChat] = useState(false)
+
+  // Handle phone param from kanban
+  useEffect(() => {
+    if (phoneParam) {
+      const jid = phoneToJid(phoneParam)
+      setActiveJid(jid)
+      setShowMobileChat(true)
+    }
+  }, [phoneParam])
+
+  const activeConversation = conversations.find((c) => c.remote_jid === activeJid) || null
+
+  const handleSelectConversation = (jid: string) => {
+    setActiveJid(jid)
+    setShowMobileChat(true)
+  }
+
+  const handleNewChat = () => {
+    const phone = prompt('Numero do contato (com DDD, ex: 11999999999):')
+    if (!phone) return
+    const digits = phone.replace(/\D/g, '')
+    const fullPhone = digits.startsWith('55') ? digits : `55${digits}`
+    const jid = phoneToJid(fullPhone)
+    setActiveJid(jid)
+    setShowMobileChat(true)
+  }
+
+  // Loading state
+  if (instanceLoading) {
+    return (
+      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
+        <Skeleton className="h-64 w-full max-w-md" />
+      </div>
+    )
+  }
+
+  // Show setup if no instance or disconnected
+  if (!instance || status === 'disconnected') {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="flex h-[calc(100vh-4rem)] flex-col"
+      >
+        <ConnectionSetup
+          status={status}
+          qrCode={qrCode}
+          loading={instanceLoading}
+          onConnect={createInstance}
+          onRefreshQR={refreshQRCode}
+        />
+      </motion.div>
+    )
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="flex h-[calc(100vh-4rem)] flex-col"
+    >
+      {/* Status bar */}
+      <div className="flex items-center justify-between border-b border-border/50 px-4 py-2">
+        <div className="flex items-center gap-3">
+          <h1 className="text-sm font-semibold">Atendimento WhatsApp</h1>
+          <ConnectionStatusBadge />
+        </div>
+        <div className="flex items-center gap-2">
+          {status === 'connecting' && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1.5 text-xs"
+              onClick={() => setShowQR(true)}
+            >
+              <Wifi className="h-3 w-3" />
+              Ver QR Code
+            </Button>
+          )}
+          {status === 'connected' && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 gap-1.5 text-xs text-muted-foreground"
+              onClick={deleteInstance}
+            >
+              <WifiOff className="h-3 w-3" />
+              Desconectar
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Chat layout */}
+      <div className="flex min-h-0 flex-1">
+        {/* Conversation list — hidden on mobile when chat is open */}
+        <div className={`w-full flex-shrink-0 lg:w-80 ${showMobileChat ? 'hidden lg:flex' : 'flex'}`}>
+          <ConversationList
+            conversations={conversations}
+            loading={convsLoading}
+            activeJid={activeJid}
+            onSelect={handleSelectConversation}
+            onNewChat={handleNewChat}
+          />
+        </div>
+
+        {/* Chat panel — hidden on mobile when list is open */}
+        <div className={`min-w-0 flex-1 ${!showMobileChat ? 'hidden lg:flex' : 'flex'}`}>
+          <div className="flex-1">
+            <ChatPanel
+              remoteJid={activeJid}
+              instanceName={instance.instance_name}
+              conversation={activeConversation}
+              onBack={() => setShowMobileChat(false)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* QR Code dialog */}
+      <QRCodeDialog
+        open={showQR}
+        onOpenChange={setShowQR}
+        qrCode={qrCode}
+        status={status}
+        onRefreshQR={refreshQRCode}
+      />
+    </motion.div>
+  )
+}
+
+export default function AtendimentoPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
+        <Skeleton className="h-64 w-full max-w-md" />
+      </div>
+    }>
+      <AtendimentoContent />
+    </Suspense>
+  )
+}
