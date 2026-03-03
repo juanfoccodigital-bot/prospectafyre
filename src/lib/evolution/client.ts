@@ -51,9 +51,11 @@ export const evolutionApi = {
   },
 
   async getConnectionState(instanceName: string) {
-    return request<{ instance: string; state: string }>(
+    const data = await request<{ instance: { instanceName: string; state: string } }>(
       `/instance/connectionState/${instanceName}`
     )
+    // Normalize: return flat { state } for easier consumption
+    return { state: data.instance.state }
   },
 
   async connectInstance(instanceName: string) {
