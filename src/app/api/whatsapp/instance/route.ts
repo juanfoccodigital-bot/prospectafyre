@@ -10,6 +10,25 @@ export async function GET() {
     .order('created_at', { ascending: false })
 
   if (!instances?.length) {
+    // Check if instance exists on Evolution API but not in Supabase
+    try {
+      const evoInstances = await evolutionApi.fetchInstances() as { name: string; connectionStatus: string }[]
+      const pfInstance = evoInstances.find((i) => i.name === 'prospectafyre-main')
+      if (pfInstance) {
+        const status = pfInstance.connectionStatus === 'open' ? 'connected' : pfInstance.connectionStatus === 'connecting' ? 'connecting' : 'disconnected'
+        // Save to Supabase
+        const { data: user } = await supabase.auth.getUser()
+        await supabase.from('whatsapp_instances').upsert({
+          instance_name: pfInstance.name,
+          status,
+          created_by: user?.user?.id || null,
+        }, { onConflict: 'instance_name' })
+        const { data: saved } = await supabase.from('whatsapp_instances').select('*').eq('instance_name', pfInstance.name).maybeSingle()
+        if (saved) return NextResponse.json([{ ...saved, status }])
+      }
+    } catch {
+      // ignore
+    }
     return NextResponse.json([])
   }
 
@@ -18,7 +37,12 @@ export async function GET() {
     instances.map(async (inst) => {
       try {
         const state = await evolutionApi.getConnectionState(inst.instance_name)
-        return { ...inst, status: state.state === 'open' ? 'connected' : state.state === 'connecting' ? 'connecting' : 'disconnected' }
+        const status = state.state === 'open' ? 'connected' : state.state === 'connecting' ? 'connecting' : 'disconnected'
+        // Update status in DB
+        if (inst.status !== status) {
+          await supabase.from('whatsapp_instances').update({ status }).eq('instance_name', inst.instance_name)
+        }
+        return { ...inst, status }
       } catch {
         return inst
       }
@@ -37,14 +61,36 @@ export async function POST(req: Request) {
   const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/whatsapp/webhook`
 
   try {
-    const result = await evolutionApi.createInstance(instanceName, webhookUrl)
+    // Check if instance already exists on Evolution API
+    let instanceExists = false
+    try {
+      const instances = await evolutionApi.fetchInstances() as { name: string }[]
+      instanceExists = instances.some((i) => i.name === instanceName)
+    } catch {
+      // ignore
+    }
+
+    let result: unknown
+    if (!instanceExists) {
+      result = await evolutionApi.createInstance(instanceName, webhookUrl)
+    } else {
+      // Instance exists, just update webhook and get QR code
+      try {
+        await evolutionApi.setWebhook(instanceName, webhookUrl, [
+          'QRCODE_UPDATED', 'MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'CONNECTION_UPDATE', 'SEND_MESSAGE',
+        ])
+      } catch {
+        // ignore webhook error
+      }
+      result = await evolutionApi.connectInstance(instanceName)
+    }
 
     const supabase = await createClient()
     const { data: user } = await supabase.auth.getUser()
 
     await supabase.from('whatsapp_instances').upsert({
       instance_name: instanceName,
-      instance_id: (result as Record<string, unknown>)?.instanceId || null,
+      instance_id: (result as Record<string, unknown>)?.instanceId as string || null,
       status: 'connecting',
       webhook_url: webhookUrl,
       created_by: user?.user?.id || null,
@@ -52,9 +98,26 @@ export async function POST(req: Request) {
 
     return NextResponse.json(result)
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to create instance' },
-      { status: 500 }
-    )
+    const message = err instanceof Error ? err.message : 'Failed to create instance'
+    console.error('POST /api/whatsapp/instance error:', message)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
+}
+
+export async function DELETE(req: Request) {
+  const { instanceName } = await req.json()
+  if (!instanceName) {
+    return NextResponse.json({ error: 'instanceName required' }, { status: 400 })
+  }
+
+  try {
+    await evolutionApi.deleteInstance(instanceName)
+  } catch {
+    // ignore if not found
+  }
+
+  const supabase = await createClient()
+  await supabase.from('whatsapp_instances').delete().eq('instance_name', instanceName)
+
+  return NextResponse.json({ ok: true })
 }
