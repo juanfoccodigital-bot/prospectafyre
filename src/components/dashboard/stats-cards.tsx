@@ -47,7 +47,7 @@ export function StatsCards({ dateRange }: { dateRange?: DateRange }) {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 8 }).map((_, i) => (
           <Skeleton key={i} className="h-28" />
         ))}
@@ -133,7 +133,7 @@ export function StatsCards({ dateRange }: { dateRange?: DateRange }) {
       variants={container}
       initial="hidden"
       animate="show"
-      className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8"
+      className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
     >
       {cards.map((card) => (
         <motion.div key={card.title} variants={item}>
