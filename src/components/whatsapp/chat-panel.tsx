@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Calendar, ExternalLink, MapPin, Phone, Briefcase, User } from 'lucide-react'
+import { ArrowLeft, Calendar, ExternalLink, MapPin, Phone, Briefcase, User, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -17,11 +17,12 @@ import { ContactTags } from './contact-tags'
 import { TemplatePicker } from './template-picker'
 import { TemplateManager } from './template-manager'
 import { MeetingModal } from '@/components/meetings/meeting-modal'
+import { ConvertToLeadModal } from '@/components/contacts/convert-to-lead-modal'
 import { useWhatsAppMessages } from '@/hooks/use-whatsapp-messages'
 import { useUser } from '@/hooks/use-user'
 import { useWhatsAppTemplates } from '@/hooks/use-whatsapp-templates'
 import { phoneToDisplay, jidToPhone } from '@/lib/evolution/utils'
-import type { Conversation, Lead } from '@/types'
+import type { Conversation, Lead, WhatsAppContact } from '@/types'
 import { LEAD_STATUS_CONFIG } from '@/types'
 
 interface ChatPanelProps {
@@ -38,6 +39,7 @@ export function ChatPanel({ remoteJid, instanceName, conversation, onBack }: Cha
   const [showTemplateManager, setShowTemplateManager] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const [showMeetingModal, setShowMeetingModal] = useState(false)
+  const [showConvertModal, setShowConvertModal] = useState(false)
   const [inputText, setInputText] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
   const { user } = useUser()
@@ -262,10 +264,24 @@ export function ChatPanel({ remoteJid, instanceName, conversation, onBack }: Cha
           )}
 
           {!lead && (
-            <div className="mt-6">
-              <p className="text-center text-xs text-muted-foreground">
-                Nenhum lead vinculado a este contato
-              </p>
+            <div className="mt-6 space-y-3">
+              <h4 className="text-xs font-semibold uppercase text-muted-foreground">Lead</h4>
+              <div className="rounded-lg border border-border/50 p-4 text-center space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Nenhum lead vinculado a este contato
+                </p>
+                <Button
+                  size="sm"
+                  className="w-full gap-1.5 text-xs"
+                  onClick={() => {
+                    setShowProfile(false)
+                    setShowConvertModal(true)
+                  }}
+                >
+                  <UserPlus className="h-3.5 w-3.5" />
+                  Converter em Lead
+                </Button>
+              </div>
             </div>
           )}
         </SheetContent>
@@ -282,6 +298,25 @@ export function ChatPanel({ remoteJid, instanceName, conversation, onBack }: Cha
           userId={user.id}
         />
       )}
+
+      {/* Convert to lead modal */}
+      <ConvertToLeadModal
+        contact={remoteJid ? {
+          remote_jid: remoteJid,
+          push_name: conversation?.contact_name || null,
+          nome: conversation?.contact_name || null,
+          profile_pic_url: profilePic || null,
+          observacoes: null,
+          created_manually: false,
+          updated_at: new Date().toISOString(),
+        } as WhatsAppContact : null}
+        open={showConvertModal}
+        onClose={() => setShowConvertModal(false)}
+        onConverted={() => {
+          setShowConvertModal(false)
+          window.location.reload()
+        }}
+      />
     </div>
   )
 }
