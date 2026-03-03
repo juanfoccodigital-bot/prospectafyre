@@ -13,11 +13,14 @@ import { ChatPanel } from '@/components/whatsapp/chat-panel'
 import { QRCodeDialog } from '@/components/whatsapp/qr-code-dialog'
 import { useWhatsAppInstance } from '@/hooks/use-whatsapp-instance'
 import { useConversations } from '@/hooks/use-conversations'
+import { useUser } from '@/hooks/use-user'
 import { phoneToJid } from '@/lib/evolution/utils'
 
 function AtendimentoContent() {
   const searchParams = useSearchParams()
   const phoneParam = searchParams.get('phone')
+
+  const { user } = useUser()
 
   const {
     instance,
@@ -82,6 +85,7 @@ function AtendimentoContent() {
           status={status}
           qrCode={qrCode}
           loading={instanceLoading}
+          userName={user?.name || user?.email?.split('@')[0] || 'usuario'}
           onConnect={createInstance}
           onRefreshQR={refreshQRCode}
         />

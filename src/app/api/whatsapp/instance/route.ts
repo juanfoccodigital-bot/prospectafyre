@@ -10,13 +10,12 @@ export async function GET() {
     .order('created_at', { ascending: false })
 
   if (!instances?.length) {
-    // Check if instance exists on Evolution API but not in Supabase
+    // Check if any pf-* instance exists on Evolution API but not in Supabase
     try {
       const evoInstances = await evolutionApi.fetchInstances() as { name: string; connectionStatus: string }[]
-      const pfInstance = evoInstances.find((i) => i.name === 'prospectafyre-main')
+      const pfInstance = evoInstances.find((i) => i.name.startsWith('pf-'))
       if (pfInstance) {
         const status = pfInstance.connectionStatus === 'open' ? 'connected' : pfInstance.connectionStatus === 'connecting' ? 'connecting' : 'disconnected'
-        // Save to Supabase
         const { data: user } = await supabase.auth.getUser()
         await supabase.from('whatsapp_instances').upsert({
           instance_name: pfInstance.name,
@@ -38,13 +37,16 @@ export async function GET() {
       try {
         const state = await evolutionApi.getConnectionState(inst.instance_name)
         const status = state.state === 'open' ? 'connected' : state.state === 'connecting' ? 'connecting' : 'disconnected'
-        // Update status in DB
         if (inst.status !== status) {
           await supabase.from('whatsapp_instances').update({ status }).eq('instance_name', inst.instance_name)
         }
         return { ...inst, status }
       } catch {
-        return inst
+        // Instance no longer exists on Evolution API — mark as disconnected
+        if (inst.status !== 'disconnected') {
+          await supabase.from('whatsapp_instances').update({ status: 'disconnected' }).eq('instance_name', inst.instance_name)
+        }
+        return { ...inst, status: 'disconnected' }
       }
     })
   )

@@ -26,9 +26,10 @@ export function QRCodeDialog({
 }: QRCodeDialogProps) {
   const refreshRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Auto-refresh QR every 30s
+  // Fetch QR immediately when dialog opens, then auto-refresh every 30s
   useEffect(() => {
     if (open && status === 'connecting') {
+      onRefreshQR()
       refreshRef.current = setInterval(onRefreshQR, 30000)
     }
     return () => {

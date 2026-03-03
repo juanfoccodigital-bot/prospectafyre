@@ -11,23 +11,28 @@ interface ConnectionSetupProps {
   status: 'disconnected' | 'connecting' | 'connected'
   qrCode: string | null
   loading: boolean
+  userName: string
   onConnect: (name: string) => void
   onRefreshQR: () => void
 }
 
-const INSTANCE_NAME = 'prospectafyre-main'
+function buildInstanceName(userName: string) {
+  return `pf-${userName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 30)}`
+}
 
 export function ConnectionSetup({
   status,
   qrCode,
   loading,
+  userName,
   onConnect,
   onRefreshQR,
 }: ConnectionSetupProps) {
   const [showQR, setShowQR] = useState(false)
 
   const handleConnect = () => {
-    onConnect(INSTANCE_NAME)
+    const instanceName = buildInstanceName(userName)
+    onConnect(instanceName)
     setShowQR(true)
   }
 

@@ -18,6 +18,18 @@ export function useWhatsAppInstance() {
         const inst = data[0] as WhatsAppInstance
         setInstance(inst)
         setStatus(inst.status)
+        // Auto-fetch QR code when instance is in connecting state
+        if (inst.status === 'connecting') {
+          try {
+            const qrRes = await fetch(`/api/whatsapp/instance/${inst.instance_name}/qrcode`)
+            const qrData = await qrRes.json()
+            if (qrData.base64) {
+              setQrCode(qrData.base64)
+            }
+          } catch {
+            // QR not available yet
+          }
+        }
         return inst
       }
       setInstance(null)
