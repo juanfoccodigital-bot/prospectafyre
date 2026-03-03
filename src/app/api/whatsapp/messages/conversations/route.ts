@@ -21,6 +21,8 @@ export async function GET() {
     messagesQuery = messagesQuery.or(`instance_name.eq.${instanceName},instance_name.is.null`)
   }
 
+  console.log('[GET /conversations]', { instanceName, userId: authUser?.id })
+
   const { data: messages, error } = await messagesQuery
 
   if (error) {

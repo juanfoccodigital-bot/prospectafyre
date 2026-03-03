@@ -27,6 +27,8 @@ export async function GET(req: Request) {
     query = query.or(`instance_name.eq.${instanceName},instance_name.is.null`)
   }
 
+  console.log('[GET /messages]', { remoteJid, instanceName, limit })
+
   const { data, error } = await query
 
   if (error) {
@@ -98,7 +100,7 @@ export async function POST(req: Request) {
     const resultObj = result as Record<string, unknown>
     const messageId = (resultObj?.key as Record<string, unknown>)?.id as string || null
 
-    await supabase.from('whatsapp_messages').insert({
+    const { error: insertError } = await supabase.from('whatsapp_messages').insert({
       instance_name: instanceName,
       remote_jid: remoteJid,
       message_id: messageId,
@@ -111,6 +113,11 @@ export async function POST(req: Request) {
       status: 'sent',
       lead_id: leadId,
     })
+
+    if (insertError) {
+      console.error('[POST /messages] insert error:', insertError.message, { instanceName, remoteJid, messageId })
+      return NextResponse.json({ error: insertError.message }, { status: 500 })
+    }
 
     return NextResponse.json({ ok: true, messageId })
   } catch (err) {
