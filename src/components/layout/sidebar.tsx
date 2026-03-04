@@ -10,6 +10,7 @@ import {
   Kanban,
   User,
   Calendar,
+  ScrollText,
   ChevronLeft,
   ChevronRight,
   MessageSquareMore,
@@ -27,6 +28,7 @@ const navItems = [
   { href: '/leads', label: 'Leads', icon: Users },
   { href: '/reunioes', label: 'Reuniões', icon: Calendar },
   { href: '/kanban', label: 'Kanban', icon: Kanban },
+  { href: '/scripts', label: 'Scripts', icon: ScrollText },
   { href: '/upload', label: 'Upload', icon: Upload },
   { href: '/profile', label: 'Perfil', icon: User },
 ]
