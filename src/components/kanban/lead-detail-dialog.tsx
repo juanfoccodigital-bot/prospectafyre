@@ -1,6 +1,5 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import {
   Dialog,
   DialogContent,
@@ -20,8 +19,6 @@ interface LeadDetailDialogProps {
 }
 
 export function LeadDetailDialog({ lead, open, onOpenChange }: LeadDetailDialogProps) {
-  const router = useRouter()
-
   if (!lead) return null
 
   const config = LEAD_STATUS_CONFIG[lead.status]
@@ -125,10 +122,7 @@ export function LeadDetailDialog({ lead, open, onOpenChange }: LeadDetailDialogP
           {fullPhone && (
             <Button
               className="w-full gap-2 bg-green-600 hover:bg-green-700"
-              onClick={() => {
-                onOpenChange(false)
-                router.push(`/atendimento?phone=55${fullPhone}`)
-              }}
+              onClick={() => window.open(`https://wa.me/55${fullPhone}`, '_blank')}
             >
               <MessageCircle className="h-4 w-4" />
               Abrir WhatsApp

@@ -14,7 +14,6 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { useUser } from '@/hooks/use-user'
 import { createClient } from '@/lib/supabase/client'
-import { ConnectionStatusBadge } from '@/components/whatsapp/connection-status-badge'
 
 interface TopbarProps {
   mobileMenuButton?: React.ReactNode
@@ -53,9 +52,6 @@ export function Topbar({ mobileMenuButton }: TopbarProps) {
           <Trophy className="h-3.5 w-3.5" />
           <span className="text-xs font-semibold">Admin</span>
         </Badge>
-
-        {/* WhatsApp status */}
-        <ConnectionStatusBadge compact />
 
         {/* Notifications */}
         <Button variant="ghost" size="icon" className="relative">

@@ -9,8 +9,6 @@ import {
   Upload,
   Kanban,
   User,
-  MessageSquare,
-  Contact,
   Calendar,
   ChevronLeft,
   ChevronRight,
@@ -27,12 +25,10 @@ import {
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/leads', label: 'Leads', icon: Users },
-  { href: '/contatos', label: 'Contatos', icon: Contact },
   { href: '/reunioes', label: 'Reuniões', icon: Calendar },
   { href: '/kanban', label: 'Kanban', icon: Kanban },
   { href: '/upload', label: 'Upload', icon: Upload },
   { href: '/profile', label: 'Perfil', icon: User },
-  { href: '/atendimento', label: 'Atendimento', icon: MessageSquare },
 ]
 
 interface SidebarProps {

@@ -1,7 +1,6 @@
 'use client'
 
 import { useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Phone, GripVertical, MessageCircle } from 'lucide-react'
@@ -14,7 +13,6 @@ interface KanbanCardProps {
 }
 
 export function KanbanCard({ lead, isDragging, onCardClick }: KanbanCardProps) {
-  const router = useRouter()
   const pointerStart = useRef<{ x: number; y: number } | null>(null)
 
   const {
@@ -81,11 +79,11 @@ export function KanbanCard({ lead, isDragging, onCardClick }: KanbanCardProps) {
           <button
             onClick={(e) => {
               e.stopPropagation()
-              router.push(`/atendimento?phone=55${fullPhone}`)
+              window.open(`https://wa.me/55${fullPhone}`, '_blank')
             }}
             onPointerDown={(e) => e.stopPropagation()}
             className="shrink-0 rounded-md bg-green-500/10 p-1.5 text-green-500 transition-colors hover:bg-green-500/20"
-            title="Abrir conversa"
+            title="Abrir WhatsApp"
           >
             <MessageCircle className="h-3.5 w-3.5" />
           </button>
